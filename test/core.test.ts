@@ -44,3 +44,13 @@ test('row caps fail closed', async () => {
 test('action failure propagates rather than being mistaken for success', async () => {
   await assert.rejects(() => observeFailureBoundary(fakeDb([], []), tables, async () => { throw new Error('injected'); }), /injected/);
 });
+
+test('pg QueryResult {rows} adapter works', async () => {
+  let calls = 0;
+  const db = { async query(_sql: string) {
+    return { rows: calls++ === 0 ? [{ id: 1, status: 'pending' }] : [{ id: 1, status: 'done' }] };
+  } };
+  const changes = await observeFailureBoundary(db, tables, async () => {});
+  assert.equal(changes.length, 1);
+  assert.equal(changes[0].kind, 'updated');
+});
