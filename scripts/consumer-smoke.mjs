@@ -39,7 +39,34 @@ try {
     const cjsConsumer = join(workspace, 'consumer.cjs');
     writeFileSync(cjsConsumer, "const assert = require('node:assert/strict'); const pkg = require('mutation-boundary'); assert.equal(typeof pkg.assertNoMutation, 'function');");
     execFileSync('node', [cjsConsumer], { cwd: workspace, stdio: 'inherit' });
-    console.log('External tarball ESM/CommonJS consumer smoke and tarball contents passed');
+    const typeConsumer = join(workspace, 'consumer.ts');
+    writeFileSync(typeConsumer, [
+      "import { assertNoMutation, MutationBoundaryError, type AssertNoMutationOptions } from 'mutation-boundary';",
+      "const check: typeof assertNoMutation = assertNoMutation;",
+      "const options: AssertNoMutationOptions | undefined = undefined;",
+      "void check; void options; void MutationBoundaryError;",
+    ].join('\n'));
+    writeFileSync(join(workspace, 'tsconfig.json'), JSON.stringify({
+      compilerOptions: {
+        target: 'ES2022',
+        module: 'NodeNext',
+        moduleResolution: 'NodeNext',
+        strict: true,
+        noEmit: true,
+        skipLibCheck: true,
+      },
+      files: ['consumer.ts'],
+    }));
+    execFileSync(resolve(root, 'node_modules', '.bin', 'tsc'), ['-p', 'tsconfig.json'], {
+      cwd: workspace,
+      stdio: 'inherit',
+    });
+    assert.ok(!tarballListing.includes('package/test/'));
+    assert.ok(!tarballListing.includes('package/.github/'));
+    assert.ok(!tarballListing.includes('package/scripts/'));
+    assert.ok(!tarballListing.includes('package/.env'));
+    assert.doesNotMatch(declarations, /observeFailureBoundary|takeBoundarySnapshot|diffBoundarySnapshots|RowChange/);
+    console.log('External tarball ESM/CommonJS/TypeScript consumer smoke and package contents passed');
   } finally {
     rmSync(tarball, { force: true });
   }
