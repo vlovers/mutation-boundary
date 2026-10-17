@@ -32,6 +32,11 @@ jobs:
         with:
           node-version: '24'
       - run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Validate dependency lockfile
+        run: |
+          test -f package-lock.json
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          git diff --exit-code -- package-lock.json
       - run: npm run typecheck
       - run: npm test
       - run: npm run test:postgres
