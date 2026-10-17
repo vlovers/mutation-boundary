@@ -136,7 +136,11 @@ export async function assertNoMutation(options: AssertNoMutationOptions): Promis
   // Pool adapters are pinned for the complete verification/snapshot lifecycle.
   // The action may use a separate connection to commit its own changes.
   const isPool = (value: BoundaryDatabase | BoundaryPool): value is BoundaryPool => 
-    'connect' in value && typeof value.connect === 'function' && !('query' in value && typeof value.query === 'function'); 
+    'connect' in value && typeof value.connect === 'function' && (
+      !('query' in value && typeof value.query === 'function') ||
+      ('totalCount' in value && typeof value.totalCount === 'number' &&
+       'idleCount' in value && typeof value.idleCount === 'number')
+    ); 
   const pool = isPool(db) ? db : undefined; 
   const client = pool ? await pool.connect() : db as BoundaryDatabase;
   try {
