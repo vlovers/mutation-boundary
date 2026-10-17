@@ -9,8 +9,8 @@ The library must only be used against disposable, isolated PostgreSQL test datab
 The following items were part of the original pre-release checklist. Checked items are evidenced by the repository history; unchecked items require explicit verification and are **not** claims that release validation failed.
 
 - [ ] Confirm the published npm tarball metadata, exports and contents match the GitHub v0.1.0 source.
-- [ ] Confirm the exact final release commit passed `npm run typecheck`, `npm test`, `npm run test:postgres`, `npm run build`, and `npm run test:consumer`.
-- [ ] Verify the archive file allowlist with `npm pack --dry-run`; exclude tests, secrets and build caches.
+- [x] GitHub Actions on documentation head `599f9479ace26155b85abb26464edb3cce0ffb07` passed `npm run typecheck`, `npm test`, `npm run test:postgres`, `npm run build`, and `npm run test:consumer` ([run 39070196988](https://github.com/vlovers/mutation-boundary/actions/runs/39070196988)). This proves source CI, not npm tarball identity.
+- [x] GitHub Actions successfully ran `npm pack --dry-run` on commit `599f9479ace26155b85abb26464edb3cce0ffb07`. The exact published npm tarball contents remain unverified.
 - [ ] Confirm PostgreSQL integration coverage for INSERT, UPDATE, DELETE, JSONB, timestamps, action throws, empty/large snapshots, unsafe identifiers and identity mismatches.
 - [ ] Confirm snapshots and safety checks use a pinned connection or a documented adapter constraint.
 - [x] Do not export low-level snapshot helpers that expose raw row values without the safety guard.
