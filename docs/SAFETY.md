@@ -5,7 +5,7 @@ MutationBoundary is a PostgreSQL net-state assertion tool for **disposable, isol
 ## Safe high-level usage
 
 ```ts
-import { assertNoMutation } from '@vlovers/mutation-boundary';
+import { assertNoMutation } from 'mutation-boundary';
 
 await assertNoMutation({
   db: dedicatedTestConnection,
