@@ -5,7 +5,7 @@
 [![CI](https://github.com/vlovers/mutation-boundary/actions/workflows/ci.yml/badge.svg)](https://github.com/vlovers/mutation-boundary/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> v0.1.0 release candidate (not yet published). The API remains experimental; use only isolated disposable test databases.
+> v0.1.0 is being prepared for its first npm release. The API is experimental; use only isolated disposable test databases.
 
 An HTTP endpoint returns 500, an authorization check rejects a request, or a background job fails. **Did any committed row changes survive?** MutationBoundary compares the net state of selected PostgreSQL tables before and after an awaited action and fails the test when unexpected INSERT, UPDATE or DELETE changes remain.
 
@@ -104,7 +104,7 @@ CI provisions its own PostgreSQL 16 service and executes both suites.
 
 ## Project status
 
-The package is **not published**. The current milestone is an unpublished v0.1.0 release candidate. Final CI, reproducible installation and publication approval are required before release.
+The v0.1.0 package is **prepared for publication but not yet confirmed published on npm**. Verify the npm registry, green release CI, and publication permissions before announcing availability.
 
 For release preparation see [Release checklist](docs/RELEASING.md), [Architecture](docs/ARCHITECTURE.md), [Security policy](SECURITY.md), and [Contributing](CONTRIBUTING.md).
 
