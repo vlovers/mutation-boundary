@@ -29,7 +29,17 @@ try {
     execFileSync('node', [consumer], { cwd: workspace, stdio: 'inherit' });
     const declarations = readFileSync(join(workspace, 'node_modules', 'mutation-boundary', 'dist', 'index.d.ts'), 'utf8');
     assert.match(declarations, /assertNoMutation/);
-    console.log('External tarball consumer smoke passed');
+    const packageJson = JSON.parse(readFileSync(join(workspace, 'node_modules', 'mutation-boundary', 'package.json'), 'utf8'));
+    assert.equal(packageJson.main, './dist/index.js');
+    assert.equal(packageJson.types, './dist/index.d.ts');
+    const tarballListing = execFileSync('tar', ['-tzf', tarball], { encoding: 'utf8' });
+    assert.match(tarballListing, /package\\/dist\\/index\\.js/);
+    assert.match(tarballListing, /package\\/dist\\/index\\.d\\.ts/);
+    assert.doesNotMatch(tarballListing, /package\\/(src|test|node_modules|\\.env)/);
+    const cjsConsumer = join(workspace, 'consumer.cjs');
+    writeFileSync(cjsConsumer, "const assert = require('node:assert/strict'); const pkg = require('mutation-boundary'); assert.equal(typeof pkg.assertNoMutation, 'function');\\n");
+    execFileSync('node', [cjsConsumer], { cwd: workspace, stdio: 'inherit' });
+    console.log('External tarball ESM/CommonJS consumer smoke and tarball contents passed');
   } finally {
     rmSync(tarball, { force: true });
   }
