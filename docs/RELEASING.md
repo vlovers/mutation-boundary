@@ -1,6 +1,6 @@
 # Release checklist (v0.1.0)
 
-No automatic npm publication until every gate is verified. The package remains `private: true` in this release candidate; explicitly remove it only in the approved publishing change.
+No automatic npm publication until every gate is verified. `private: true` has been removed and `publishConfig.access` is `public`; this does not itself publish the package.
 
 - [ ] `npm run typecheck`, `npm test`, `npm run test:postgres`, `npm run build` pass on the final commit.
 - [ ] PostgreSQL integration tests cover INSERT, UPDATE, DELETE, JSONB, timestamps, action throws, empty/large snapshots, unsafe identifiers and identity mismatches.
@@ -14,6 +14,6 @@ No automatic npm publication until every gate is verified. The package remains `
 - [x] Confirm MIT license, README, security policy, changelog and repository links.
 - [ ] Verify Estima issue #10 regression: fails before the application fix and passes after it.
 - [ ] Merge reviewed PRs and tag a release only after green checks.
-- [ ] Publish an experimental 0.1.0 package only with explicit release approval.
+- [ ] Publish an experimental 0.1.0 package only after verifying registry name availability, publishing access, and release authorization.
 
 Recommended publishing approach: npm provenance via GitHub Actions OIDC and npm trusted publishing, no long-lived npm token. Publish from a protected release workflow after reviewing its exact permissions.
