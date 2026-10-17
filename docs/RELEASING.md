@@ -1,19 +1,29 @@
-# Release checklist (v0.1.0)
+# Release notes and verification checklist (v0.1.0)
 
-No automatic npm publication until every gate is verified. The package remains `private: true` in this release candidate; explicitly remove it only in the approved publishing change.
+MutationBoundary v0.1.0 is the initial experimental release. Package listing: [mutation-boundary on npm](https://www.npmjs.com/package/mutation-boundary).
 
-- [ ] `npm run typecheck`, `npm test`, `npm run test:postgres`, `npm run build` pass on the final commit.
-- [ ] PostgreSQL integration tests cover INSERT, UPDATE, DELETE, JSONB, timestamps, action throws, empty/large snapshots, unsafe identifiers and identity mismatches.
-- [ ] Verify the safety check and snapshots use an appropriate pinned connection, or explicitly constrain the supported adapter API.
-- [x] Remove low-level exports that expose raw row values without the safety guard.
-- [ ] Review error propagation: `MutationBoundaryError` redacts row values and keys; the original thrown action error and driver errors are forwarded and may themselves contain sensitive values. Document that callers must sanitize their own errors.
-- [ ] Verify final CI tarball inspection: `npm pack --dry-run`, archive file allowlist and exclusion of tests, secrets and build caches.
-- [ ] Confirm final CI passes the independent Node 24 ESM/CommonJS/TypeScript tarball consumer checks.
-- [ ] Verify actual npm name availability with the npm registry and publishing permissions. Search results alone do not reserve the name.
-- [x] Add a lockfile and switch CI to `npm ci` for reproducibility.
-- [x] Confirm MIT license, README, security policy, changelog and repository links.
+The library must only be used against disposable, isolated PostgreSQL test databases. The published API is experimental and does not guarantee detection of transient, rolled-back, or concurrent writes.
+
+## Release verification
+
+The following items were part of the original pre-release checklist. Checked items are evidenced by the repository history; unchecked items require explicit verification and are **not** claims that release validation failed.
+
+- [ ] Confirm the published npm tarball metadata, exports and contents match the GitHub v0.1.0 source.
+- [ ] Confirm the exact final release commit passed `npm run typecheck`, `npm test`, `npm run test:postgres`, `npm run build`, and `npm run test:consumer`.
+- [ ] Verify the archive file allowlist with `npm pack --dry-run`; exclude tests, secrets and build caches.
+- [ ] Confirm PostgreSQL integration coverage for INSERT, UPDATE, DELETE, JSONB, timestamps, action throws, empty/large snapshots, unsafe identifiers and identity mismatches.
+- [ ] Confirm snapshots and safety checks use a pinned connection or a documented adapter constraint.
+- [x] Do not export low-level snapshot helpers that expose raw row values without the safety guard.
 - [ ] Verify Estima issue #10 regression: fails before the application fix and passes after it.
-- [ ] Merge reviewed PRs and tag a release only after green checks.
-- [ ] Publish an experimental 0.1.0 package only with explicit release approval.
+- [ ] Confirm that the npm account and package maintainers are authorized to publish future versions.
+- [ ] Verify Git tag/release `v0.1.0` points to the source corresponding to the published artifact.
 
-Recommended publishing approach: npm provenance via GitHub Actions OIDC and npm trusted publishing, no long-lived npm token. Publish from a protected release workflow after reviewing its exact permissions.
+## Security and release process
+
+`MutationBoundaryError` redacts row values and keys from its high-level report. The original action error and driver errors may contain sensitive details and should be sanitized by callers before logging or sharing.
+
+The package uses `publishConfig.access: public` and currently advertises Node.js 24+. Publishing a version does not by itself establish that every verification item above passed.
+
+For future releases, prefer npm trusted publishing with GitHub Actions OIDC, explicit minimal workflow permissions, a protected release process and npm provenance. Avoid long-lived npm tokens.
+
+See [README](../README.md), [Safety](SAFETY.md), [Architecture](ARCHITECTURE.md), [Security policy](../SECURITY.md), and [Contributing](../CONTRIBUTING.md).
