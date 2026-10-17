@@ -22,13 +22,13 @@ Use focused SQL assertions when only a few specific fields matter. MutationBound
 ## Installation
 
 ```sh
-npm install -D @vlovers/mutation-boundary
+npm install -D mutation-boundary
 ```
 
 ## Example
 
 ```ts
-import { assertNoMutation } from '@vlovers/mutation-boundary';
+import { assertNoMutation } from 'mutation-boundary';
 
 await assertNoMutation({
   db: testDb, // a PostgreSQL pg Client/Pool or compatible query adapter
