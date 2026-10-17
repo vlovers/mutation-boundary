@@ -1,5 +1,5 @@
 {
-  "name": "@vlovers/mutation-boundary",
+  "name": "mutation-boundary",
   "version": "0.1.0",
   "type": "module",
   "description": "Detect unexpected net PostgreSQL writes after failed operations in isolated integration tests",
