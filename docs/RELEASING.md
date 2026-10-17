@@ -27,3 +27,19 @@ The package uses `publishConfig.access: public` and currently advertises Node.js
 For future releases, prefer npm trusted publishing with GitHub Actions OIDC, explicit minimal workflow permissions, a protected release process and npm provenance. Avoid long-lived npm tokens.
 
 See [README](../README.md), [Safety](SAFETY.md), [Architecture](ARCHITECTURE.md), [Security policy](../SECURITY.md), and [Contributing](../CONTRIBUTING.md).
+
+## Automated future npm releases
+
+The [publish.yml](../.github/workflows/publish.yml) workflow triggers when a version tag such as `v0.1.1` is pushed. It validates that the tag matches `package.json`, runs TypeScript/unit/PostgreSQL/package-consumer checks, and then publishes with npm Trusted Publishing (OIDC) without a stored npm token.
+
+**One-time npm setup (required):** on the `mutation-boundary` npm package settings page, configure Trusted Publisher → GitHub Actions with owner `vlovers`, repository `mutation-boundary`, workflow filename `publish.yml`, and no GitHub environment. OIDC cannot work before this npm-side trust is established.
+
+For the next release:
+1. Review changes and update version via `npm version patch` (or minor/major), making sure `package-lock.json` matches.
+2. Push the version commit to `main`, await green CI, then push its `vX.Y.Z` tag.
+3. Watch the [publish workflow](https://github.com/vlovers/mutation-boundary/actions/workflows/publish.yml) and verify the new version on npm.
+4. Create a GitHub Release with reviewed notes from the same tag. GitHub Releases are not yet automatically created.
+
+The already-published `0.1.0` cannot be re-published: publishing its tag will fail with a version-exists error. The tag may still be created for source history, but the npm-publishing workflow must not be rerun expecting another `0.1.0` publication. Do not change the tag/version mapping to bypass npm's immutable version rule.
+
+This workflow does **not** automatically bump versions or release every commit; publishing is deliberately an explicit version-tag event.
