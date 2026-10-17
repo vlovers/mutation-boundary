@@ -33,4 +33,5 @@ Raw snapshot and diff helpers are internal implementation details, not public pa
 - Snapshot size is capped; exceeding the cap fails the assertion rather than passing.
 - Row keys must be unique, non-null, and SQL identifiers must be simple unqualified names.
 - Action errors are rethrown if no mutation is detected. If mutations are detected, the mutation contract error takes precedence.
-- Do not publish to npm until PostgreSQL CI passes, low-level APIs are secured or removed, connection-pinning behavior is documented and tested, and a clean external installation succeeds.
+- v0.1.0 has been released. For any subsequent version, verify PostgreSQL CI, package contents, connection safety and a clean external installation before publication.
+- In v0.1.1 development, unsupported driver values (undefined, non-finite numbers, bigint, functions and symbols) and cyclic structures fail closed rather than silently comparing ambiguous snapshots. This is not a guarantee that every custom driver representation is handled.
