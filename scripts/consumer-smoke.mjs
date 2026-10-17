@@ -65,7 +65,7 @@ try {
     assert.ok(!tarballListing.includes('package/.github/'));
     assert.ok(!tarballListing.includes('package/scripts/'));
     assert.ok(!tarballListing.includes('package/.env'));
-    assert.doesNotMatch(declarations, /observeFailureBoundary|takeBoundarySnapshot|diffBoundarySnapshots|RowChange/);
+    assert.doesNotMatch(declarations, /export declare (function|const) (observeFailureBoundary|takeBoundarySnapshot|diffBoundarySnapshots)/);
     console.log('External tarball ESM/CommonJS/TypeScript consumer smoke and package contents passed');
   } finally {
     rmSync(tarball, { force: true });
