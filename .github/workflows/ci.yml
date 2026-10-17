@@ -1,0 +1,46 @@
+name: MutationBoundary checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: mutation_boundary_test
+          POSTGRES_USER: mutation_boundary_ci
+          POSTGRES_PASSWORD: ci_only_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mutation_boundary_ci -d mutation_boundary_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      MUTATION_BOUNDARY_TEST_DATABASE_URL: postgresql://mutation_boundary_ci:ci_only_password@127.0.0.1:5432/mutation_boundary_test
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Validate dependency lockfile
+        run: |
+          test -f package-lock.json
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          git diff --exit-code -- package-lock.json
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:postgres
+      - run: npm run build
+      - run: npm pack --dry-run
+      - run: npm run test:consumer
+      - run: node --input-type=module -e "import('./dist/index.js').then(m => { if (typeof m.assertNoMutation !== 'function') process.exit(1) })"
