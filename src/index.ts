@@ -105,7 +105,7 @@ export type { DatabaseSafety } from './safety.ts';
 import { assertDisposableDatabase, type DatabaseSafety } from './safety.ts';
 
 export type AssertNoMutationOptions = {
-  db: BoundaryDatabase;
+  db: BoundaryDatabase | BoundaryPool;
   tables: readonly TableSpec[];
   action: () => Promise<unknown>;
   safety: DatabaseSafety;
