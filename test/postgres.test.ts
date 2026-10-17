@@ -6,7 +6,8 @@ import { assertNoMutation, MutationBoundaryError, assertDisposableDatabase } fro
 test('PostgreSQL INSERT UPDATE DELETE JSONB and timestamps', async () => {
   const url = process.env.MUTATION_BOUNDARY_TEST_DATABASE_URL;
   if (!url) throw new Error('Isolated test database URL required');
-  const db = new pg.Client({ connectionString: url });\n  await db.connect();
+  const db = new pg.Client({ connectionString: url });
+  await db.connect();
   const safety = {
     expectedDatabase: 'mutation_boundary_test',
     expectedUser: 'mutation_boundary_ci',
