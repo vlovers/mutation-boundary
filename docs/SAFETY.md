@@ -25,7 +25,7 @@ The confirmation flag and identity checks are **guardrails, not proof of isolati
 
 By default `assertNoMutation` reports only table names and counts. It never includes row keys or before/after column values in its own mutation error. However, SQL-driver errors and exceptions thrown by user actions may include sensitive details; sanitize them in your own logging pipeline.
 
-**Important:** low-level snapshot/diff functions and `observeFailureBoundary` remain experimental and expose raw row values. Do not log or publish their results, and do not use them with confidential data. These functions currently lack the high-level API's safety guard and must be hardened before stable release.
+Raw snapshot and diff helpers are internal implementation details, not public package exports. The supported assertion is `assertNoMutation`; its errors include table names and mutation counts but no row contents. Do not log sensitive database driver errors or action exceptions.
 
 ## Limitations and release gates
 
