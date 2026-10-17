@@ -11,6 +11,8 @@ An HTTP endpoint returns 500, an authorization check rejects a request, or a bac
 
 The initial real-world evaluation is [Estima issue #10](https://github.com/vlovers/estima/issues/10) and [draft PR #11](https://github.com/vlovers/estima/pull/11).
 
+See [the real-world failed-request regression walkthrough](docs/EXAMPLE.md) for a before/after test pattern and redacted failure output.
+
 ## Why use it?
 
 Ordinary assertions check the status code and expected fields. MutationBoundary checks a different invariant: **no selected database rows changed at all**. It can reveal partial writes in an otherwise failing request without requiring you to predict which column might have changed.
