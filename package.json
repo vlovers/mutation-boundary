@@ -1,9 +1,9 @@
 {
   "name": "mutation-boundary",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Assert that failed operations leave no unexpected net PostgreSQL row changes",
+  "description": "Detect unexpected net PostgreSQL writes after failed operations in isolated integration tests",
   "engines": {
     "node": ">=24"
   },
@@ -20,7 +20,8 @@
     "test:postgres": "node --experimental-strip-types --test test/postgres.test.ts",
     "prepack": "npm run build",
     "check:package": "npm pack --dry-run",
-    "test:consumer": "node scripts/consumer-smoke.mjs"
+    "test:consumer": "node scripts/consumer-smoke.mjs",
+    "check:release": "npm run typecheck && npm test && npm run build && npm run test:consumer"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
