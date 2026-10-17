@@ -76,6 +76,9 @@ async function takeBoundarySnapshot(
     if (rows.length > maxRowsPerTable) throw new Error('MutationBoundary: snapshot row limit exceeded');
     const values = new Map<string, Record<string, unknown>>();
     for (const row of rows) {
+      // Validate the full driver value before invoking the action.
+      // Otherwise unsupported data could be discovered only after writes.
+      stable(row);
       if (row[table.key] == null) throw new Error('MutationBoundary: missing row key');
       const id = stable(row[table.key]);
       if (values.has(id)) throw new Error('MutationBoundary: duplicate row key');
