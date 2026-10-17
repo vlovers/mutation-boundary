@@ -94,3 +94,46 @@ export async function observeFailureBoundary(
   if (actionError) throw actionError;
   return diffBoundarySnapshots(before, after);
 }
+
+export { assertDisposableDatabase, MutationBoundarySafetyError } from './safety.js';
+export type { DatabaseSafety } from './safety.js';
+import { assertDisposableDatabase, type DatabaseSafety } from './safety.js';
+
+export type AssertNoMutationOptions = {
+  db: BoundaryDatabase;
+  tables: readonly TableSpec[];
+  action: () => Promise<unknown>;
+  safety: DatabaseSafety;
+  maxRowsPerTable?: number;
+};
+
+export class MutationBoundaryError extends Error {
+  readonly counts: ReadonlyArray<Readonly<{ table: string; inserted: number; updated: number; deleted: number }>>;
+  constructor(changes: readonly RowChange[], tables: readonly TableSpec[]) {
+    const counts = tables.map(({ name }) => ({
+      table: name,
+      inserted: changes.filter(c => c.table === name && c.kind === 'inserted').length,
+      updated: changes.filter(c => c.table === name && c.kind === 'updated').length,
+      deleted: changes.filter(c => c.table === name && c.kind === 'deleted').length,
+    }));
+    super('Unexpected mutations after operation\n\n' + counts.map(c =>
+      c.table + ': ' + (c.inserted + c.updated + c.deleted === 0 ? 'no changes' :
+        [c.inserted && c.inserted + ' inserted', c.updated && c.updated + ' updated', c.deleted && c.deleted + ' deleted'].filter(Boolean).join(', '))
+    ).join('\n') + '\n\nDatabase mutation contract violated.');
+    this.name = 'MutationBoundaryError';
+    this.counts = counts;
+  }
+}
+
+/** Safe high-level API: no row values or keys in errors or returned results. */
+export async function assertNoMutation(options: AssertNoMutationOptions): Promise<void> {
+  const { db, tables, action, safety, maxRowsPerTable = 5000 } = options;
+  await assertDisposableDatabase(db, safety);
+  const before = await takeBoundarySnapshot(db, tables, maxRowsPerTable);
+  let actionError: unknown;
+  try { await action(); } catch (error) { actionError = error; }
+  const after = await takeBoundarySnapshot(db, tables, maxRowsPerTable);
+  const changes = diffBoundarySnapshots(before, after);
+  if (changes.length) throw new MutationBoundaryError(changes, tables);
+  if (actionError !== undefined) throw actionError;
+}
