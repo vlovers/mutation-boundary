@@ -1,6 +1,6 @@
 /** Minimal adapter: works with pg Pool/Client, TypeORM DataSource and compatible clients. */
 export type BoundaryRow = Record<string, unknown>;
-export type BoundaryDatabase = { query(sql: string): Promise<BoundaryRow[] | { rows: BoundaryRow[] }> };
+export type BoundaryDatabase = { query(sql: string): Promise<BoundaryRow[] | { rows: BoundaryRow[] }> };\nexport type BoundaryPool = { connect(): Promise<BoundaryDatabase & { release(): void }> };
 
 /**
  * Experimental snapshot-based failure boundary probe.
@@ -132,13 +132,20 @@ export class MutationBoundaryError extends Error {
 /** Safe high-level API: no row values or keys in errors or returned results. */
 export async function assertNoMutation(options: AssertNoMutationOptions): Promise<void> {
   const { db, tables, action, safety, maxRowsPerTable = 5000 } = options;
-  await assertDisposableDatabase(db, safety);
-  const before = await takeBoundarySnapshot(db, tables, maxRowsPerTable);
-  let actionError: unknown;
-  let actionFailed = false;
-  try { await action(); } catch (error) { actionFailed = true; actionError = error; }
-  const after = await takeBoundarySnapshot(db, tables, maxRowsPerTable);
-  const changes = diffBoundarySnapshots(before, after);
-  if (changes.length) throw new MutationBoundaryError(changes, tables);
-  if (actionFailed) throw actionError;
+  // Pool adapters are pinned for the complete verification/snapshot lifecycle.
+  // The action may use a separate connection to commit its own changes.
+  const client = 'connect' in db ? await db.connect() : db;
+  try {
+    await assertDisposableDatabase(client, safety);
+    const before = await takeBoundarySnapshot(client, tables, maxRowsPerTable);
+    let actionError: unknown;
+    let actionFailed = false;
+    try { await action(); } catch (error) { actionFailed = true; actionError = error; }
+    const after = await takeBoundarySnapshot(client, tables, maxRowsPerTable);
+    const changes = diffBoundarySnapshots(before, after);
+    if (changes.length) throw new MutationBoundaryError(changes, tables);
+    if (actionFailed) throw actionError;
+  } finally {
+    if ('connect' in db) client.release();
+  }
 }
