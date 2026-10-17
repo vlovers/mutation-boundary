@@ -6,7 +6,7 @@ import { assertNoMutation, MutationBoundaryError, assertDisposableDatabase } fro
 test('PostgreSQL INSERT UPDATE DELETE JSONB and timestamps', async () => {
   const url = process.env.MUTATION_BOUNDARY_TEST_DATABASE_URL;
   if (!url) throw new Error('Isolated test database URL required');
-  const db = new pg.Pool({ connectionString: url, max: 1 });
+  const db = new pg.Client({ connectionString: url });\n  await db.connect();
   const safety = {
     expectedDatabase: 'mutation_boundary_test',
     expectedUser: 'mutation_boundary_ci',
@@ -15,7 +15,7 @@ test('PostgreSQL INSERT UPDATE DELETE JSONB and timestamps', async () => {
   try {
     await assertDisposableDatabase(db, safety);
     await db.query('CREATE TEMP TABLE boundary_probe (id integer PRIMARY KEY, data jsonb, changed_at timestamptz)');
-    // TEMP tables are connection-local; pool max=1 pins this test's queries.
+    // Dedicated client keeps the temporary table and safety checks on one session.
     const tables = [{ name: 'boundary_probe', key: 'id' }];
     const statements = [
       'INSERT INTO boundary_probe(id) VALUES (1)',
