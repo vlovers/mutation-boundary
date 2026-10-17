@@ -80,3 +80,27 @@ test('releases pinned pool connection when mutation assertion fails', async () =
   }), MutationBoundaryError);
   assert.equal(releases, 1);
 });
+
+test('pg-like Pool with query method still pins a client', async () => {
+  let releases = 0;
+  let acquisitions = 0;
+  const client = { ...db([{ id: 1 }], [{ id: 1 }]), release() { releases++; } };
+  const pool = {
+    totalCount: 1, idleCount: 1,
+    async query(_sql: string) { throw new Error('pool.query must not be used for snapshots'); },
+    async connect() { acquisitions++; return client; },
+  };
+  await assertNoMutation({ db: pool, tables, safety, action: async () => {} });
+  assert.equal(acquisitions, 1);
+  assert.equal(releases, 1);
+});
+
+test('pg-like Client with connect and query is not connected twice', async () => {
+  let connects = 0;
+  const client = {
+    ...db([{ id: 1 }], [{ id: 1 }]),
+    async connect() { connects++; },
+  };
+  await assertNoMutation({ db: client, tables, safety, action: async () => {} });
+  assert.equal(connects, 0);
+});
