@@ -87,3 +87,68 @@ test('real pg.Pool pins a connection and observes committed changes', async () =
     await pool.end();
   }
 });
+
+test('PostgreSQL nested JSONB, bytea and null transitions use net-state comparisons', async () => {
+  const url = process.env.MUTATION_BOUNDARY_TEST_DATABASE_URL;
+  if (!url) throw new Error('Isolated test database URL required');
+  const db = new pg.Client({ connectionString: url });
+  await db.connect();
+  const safety = {
+    expectedDatabase: 'mutation_boundary_test',
+    expectedUser: 'mutation_boundary_ci',
+    confirmDisposableTestDatabase: true as const,
+  };
+  const tables = [{ name: 'boundary_edge_probe', key: 'id' }];
+  try {
+    await assertDisposableDatabase(db, safety);
+    await db.query('CREATE TEMP TABLE boundary_edge_probe (id integer PRIMARY KEY, payload jsonb, bytes bytea, note text)');
+    await db.query(
+      "INSERT INTO boundary_edge_probe(id, payload, bytes, note) VALUES (1, '{\"nested\":{\"a\":1,\"b\":null}}'::jsonb, decode('00ff', 'hex'), NULL)",
+    );
+    await assertNoMutation({ db, tables, safety, action: async () => {
+      await db.query(
+        "UPDATE boundary_edge_probe SET payload = '{\"nested\":{\"b\":null,\"a\":1}}'::jsonb WHERE id = 1",
+      );
+    } });
+    for (const sql of [
+      "UPDATE boundary_edge_probe SET note = 'changed' WHERE id = 1",
+      "UPDATE boundary_edge_probe SET bytes = decode('00fe', 'hex') WHERE id = 1",
+      "UPDATE boundary_edge_probe SET payload = '{\"nested\":{\"a\":2,\"b\":null}}'::jsonb WHERE id = 1",
+    ]) {
+      await assert.rejects(assertNoMutation({
+        db, tables, safety, action: async () => { await db.query(sql); },
+      }), MutationBoundaryError);
+    }
+  } finally {
+    await db.end();
+  }
+});
+
+test('PostgreSQL rolled-back writes are not incorrectly reported as surviving mutations', async () => {
+  const url = process.env.MUTATION_BOUNDARY_TEST_DATABASE_URL;
+  if (!url) throw new Error('Isolated test database URL required');
+  const db = new pg.Client({ connectionString: url });
+  await db.connect();
+  const safety = {
+    expectedDatabase: 'mutation_boundary_test',
+    expectedUser: 'mutation_boundary_ci',
+    confirmDisposableTestDatabase: true as const,
+  };
+  try {
+    await assertDisposableDatabase(db, safety);
+    await db.query('CREATE TEMP TABLE boundary_rollback_probe (id integer PRIMARY KEY)');
+    await assertNoMutation({
+      db, tables: [{ name: 'boundary_rollback_probe', key: 'id' }], safety,
+      action: async () => {
+        await db.query('BEGIN');
+        try {
+          await db.query('INSERT INTO boundary_rollback_probe(id) VALUES (1)');
+        } finally {
+          await db.query('ROLLBACK');
+        }
+      },
+    });
+  } finally {
+    await db.end();
+  }
+});
