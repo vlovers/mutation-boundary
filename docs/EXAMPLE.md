@@ -9,7 +9,7 @@ An API request can return HTTP 500 after an earlier database write has already c
 ## Test pattern
 
 ```ts
-import { assertNoMutation } from '@vlovers/mutation-boundary';
+import { assertNoMutation } from 'mutation-boundary';
 
 it('does not partially update a task when clarification fails', async () => {
   await assertNoMutation({
