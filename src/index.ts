@@ -8,7 +8,7 @@ export type BoundaryPool = { connect(): Promise<BoundaryDatabase & { release(): 
  * Disposable, quiescent PostgreSQL databases ONLY.
  * Detects net row changes, not transient writes or writes outside selected tables.
  */
-export type RowChange = {
+type RowChange = {
   table: string;
   key: string;
   kind: 'inserted' | 'deleted' | 'updated';
@@ -84,20 +84,6 @@ function diffBoundarySnapshots(before: Snapshot, after: Snapshot): RowChange[] {
     }
   }
   return changes;
-}
-
-async function observeFailureBoundary(
-  db: BoundaryDatabase,
-  tables: readonly TableSpec[],
-  action: () => Promise<void>
-): Promise<RowChange[]> {
-  const before = await takeBoundarySnapshot(db, tables);
-  let actionError: unknown;
-  let actionFailed = false;
-  try { await action(); } catch (error) { actionFailed = true; actionError = error; }
-  const after = await takeBoundarySnapshot(db, tables);
-  if (actionFailed) throw actionError;
-  return diffBoundarySnapshots(before, after);
 }
 
 export { assertDisposableDatabase, MutationBoundarySafetyError } from './safety.ts';
