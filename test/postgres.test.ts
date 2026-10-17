@@ -34,7 +34,7 @@ test('PostgreSQL INSERT UPDATE DELETE JSONB and timestamps', async () => {
       );
     }
     await assertNoMutation({ db, tables, safety, action: async () => {} });
-    await db.query('INSERT INTO boundary_probe(id) VALUES (3)');
+    await db.query('INSERT INTO boundary_probe(id) VALUES (3), (4)');
     await assert.rejects(
       assertNoMutation({ db, tables, safety, maxRowsPerTable: 1, action: async () => {} }),
       /row limit exceeded/,
