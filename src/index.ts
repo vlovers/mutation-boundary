@@ -135,7 +135,10 @@ export async function assertNoMutation(options: AssertNoMutationOptions): Promis
   const { db, tables, action, safety, maxRowsPerTable = 5000 } = options;
   // Pool adapters are pinned for the complete verification/snapshot lifecycle.
   // The action may use a separate connection to commit its own changes.
-  const client = 'connect' in db ? await db.connect() : db;
+  const isPool = (value: BoundaryDatabase | BoundaryPool): value is BoundaryPool => 
+    'connect' in value && typeof value.connect === 'function'; 
+  const pool = isPool(db) ? db : undefined; 
+  const client = pool ? await pool.connect() : db as BoundaryDatabase;
   try {
     await assertDisposableDatabase(client, safety);
     const before = await takeBoundarySnapshot(client, tables, maxRowsPerTable);
@@ -147,6 +150,6 @@ export async function assertNoMutation(options: AssertNoMutationOptions): Promis
     if (changes.length) throw new MutationBoundaryError(changes, tables);
     if (actionFailed) throw actionError;
   } finally {
-    if ('connect' in db) client.release();
+    if (pool) (client as BoundaryDatabase & { release(): void }).release();
   }
 }
