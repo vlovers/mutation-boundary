@@ -1,4 +1,4 @@
-import type { BoundaryDatabase, BoundaryRow } from './index.js';
+import type { BoundaryDatabase, BoundaryRow } from './index.ts';
 
 export type DatabaseSafety = {
   /** Exact database name that must be returned by PostgreSQL. */
