@@ -1,5 +1,6 @@
 /** Minimal adapter: works with pg Pool/Client, TypeORM DataSource and compatible clients. */
-export type BoundaryDatabase = { query(sql: string): Promise<Record<string, unknown>[]> };
+export type BoundaryRow = Record<string, unknown>;
+export type BoundaryDatabase = { query(sql: string): Promise<BoundaryRow[] | { rows: BoundaryRow[] }> };
 
 /**
  * Experimental snapshot-based failure boundary probe.
@@ -44,9 +45,11 @@ export async function takeBoundarySnapshot(
   for (const table of tables) {
     const name = identifier(table.name);
     const key = identifier(table.key);
-    const rows = await db.query(
+    const result = await db.query(
       `SELECT * FROM ${name} ORDER BY ${key} LIMIT ${maxRowsPerTable + 1}`
-    ) as Record<string, unknown>[];
+    );
+    const rows = Array.isArray(result) ? result : result.rows;
+    if (!Array.isArray(rows)) throw new Error('MutationBoundary: unsupported query result');
     if (rows.length > maxRowsPerTable) throw new Error('MutationBoundary: snapshot row limit exceeded');
     const values = new Map<string, Record<string, unknown>>();
     for (const row of rows) {
