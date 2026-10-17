@@ -1,66 +1,103 @@
 # MutationBoundary
 
-**Experimental, unpublished** TypeScript helper for detecting *net committed PostgreSQL row changes* around failed HTTP requests, background jobs, and integration-test actions.
+**Detect unexpected PostgreSQL writes after an operation that should leave the database unchanged.**
 
-MutationBoundary answers: **“The API returned an error; did it leave unexpected data behind?”**
+[![CI](https://github.com/vlovers/mutation-boundary/actions/workflows/ci.yml/badge.svg)](https://github.com/vlovers/mutation-boundary/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-The first real characterization test runs against [Estima issue #10](https://github.com/vlovers/estima/issues/10) in [Estima Draft PR #11](https://github.com/vlovers/estima/pull/11). An injected PostgreSQL failure after clarification results in HTTP 500 **while the task status has already changed**. This helper reveals that surviving row change.
+> Experimental / unpublished. API and safety guarantees may change before v0.1.0.
+
+An HTTP endpoint returns 500, an authorization check rejects a request, or a background job fails. **Did any committed row changes survive?** MutationBoundary compares the net state of selected PostgreSQL tables before and after an awaited action and fails the test when unexpected INSERT, UPDATE or DELETE changes remain.
+
+The initial real-world evaluation is [Estima issue #10](https://github.com/vlovers/estima/issues/10) and [draft PR #11](https://github.com/vlovers/estima/pull/11).
+
+## Why use it?
+
+Ordinary assertions check the status code and expected fields. MutationBoundary checks a different invariant: **no selected database rows changed at all**. It can reveal partial writes in an otherwise failing request without requiring you to predict which column might have changed.
+
+Use focused SQL assertions when only a few specific fields matter. MutationBoundary is useful when multiple related tables must remain untouched.
+
+## Example
+
+```ts
+import { assertNoMutation } from 'mutation-boundary';
+
+await assertNoMutation({
+  db: testDb, // a PostgreSQL pg Client/Pool or compatible query adapter
+  tables: [
+    { name: 'tasks', key: 'id' },
+    { name: 'estimates', key: 'id' },
+  ],
+  safety: {
+    expectedDatabase: 'application_test',
+    expectedUser: 'application_test_user',
+    confirmDisposableTestDatabase: true,
+  },
+  action: async () => {
+    await request(app.getHttpServer())
+      .patch('/api/tasks/123/clarify')
+      .send(payload)
+      .expect(500);
+  },
+});
+```
+
+An unexpected mutation throws `MutationBoundaryError`:
+
+```text
+Unexpected mutations after operation
+
+tasks: 1 updated
+estimates: no changes
+
+Database mutation contract violated.
+```
+
+The high-level mutation report contains counts and table names, **not row values or keys**.
+
+## Safety first
+
+**Only use disposable, isolated, quiescent PostgreSQL test databases.** The explicit confirmation and database/user identity check help catch mistakes, but do **not** prove a database is disposable. Never reuse production credentials. See [Safety and limitations](docs/SAFETY.md).
+
+The current implementation has an important limitation: it cannot guarantee that queries on a pooled connection all use the same physical PostgreSQL session. Use a dedicated connection for sensitive test setups, and do not rely on temporary tables with a general-purpose pool. Low-level snapshot functions are experimental and can expose row values.
+
+## What it detects
+
+| Scenario | Detects? |
+| --- | --- |
+| Committed INSERT/UPDATE/DELETE in selected tables | Yes |
+| JSONB or timestamp column changes | Yes |
+| Action throws after a surviving write | Yes; mutation error takes precedence |
+| Unchanged selected tables | Pass |
+| Write then rollback, or write then restore original values | No; net-state only |
+| Writes to unselected tables, sequences or external services | No |
+| Concurrent writes / delayed background tasks | Not reliable |
+| Large tables beyond configured row limit | Fails closed |
 
 ## Development
 
-Requires Node.js 24+.
+Requires Node.js 24+ and a disposable PostgreSQL instance for integration tests.
 
 ```sh
 npm install
 npm run typecheck
 npm test
 npm run build
+npm pack --dry-run
 ```
 
-No package has been published to npm.
+The PostgreSQL integration suite requires `MUTATION_BOUNDARY_TEST_DATABASE_URL` pointing to a disposable database named `mutation_boundary_test` with session user `mutation_boundary_ci`:
 
-## Concept API (test databases only)
-
-```ts
-import { observeFailureBoundary } from 'mutation-boundary';
-
-const changes = await observeFailureBoundary(
-  db, // TypeORM DataSource or pg Client/Pool query() interface
-  [
-    { name: 'tasks', key: 'id' },
-    { name: 'estimates', key: 'id' }
-  ],
-  async () => {
-    await request(app.getHttpServer())
-      .patch('/api/tasks/123/clarify')
-      .send(payload)
-      .expect(500);
-  }
-);
-
-expect(changes).toEqual([]);
+```sh
+npm run test:postgres
 ```
 
-The helper returns `inserted`, `deleted`, and `updated` entries with before/after row data. It does not log or redact those values by default.
+CI provisions its own PostgreSQL 16 service and executes both suites.
 
-## Important limitations
+## Project status
 
-**Do not connect this prototype to a production or shared database.** The current API does **not** enforce disposable DB isolation. It may snapshot sensitive columns and operates by reading entire selected tables up to the configured per-table limit (default 5000). Never log raw diffs if data may contain secrets.
+The package is **not published**. The current milestone is v0.1.0, subject to safety review, reproducible CI, an external consumer installation test and a documented stable public API.
 
-- Observes only **net state** after the awaited action; transient writes, rolled-back writes, and reversed changes are not visible.
-- Only specified tables are checked; external effects, sequences, async work finishing after the action and unselected tables are invisible.
-- Snapshots are sequential, **not a single cross-table consistent transaction snapshot**.
-- Assumes a quiet test DB without unrelated concurrent writers and a stable unique row key.
-- Currently supports simple table/key identifiers, not schemas or composite keys.
-- Does not automatically check the expected HTTP status; do so in the supplied action.
-- An action that rejects propagates its error rather than converting that into a false PASS.
-
-**Not yet ready for an npm release.** Before a stable API, implement a fail-closed disposable database guard, safe/redacted diagnostic formatter, PostgreSQL integration coverage, and tests for unsupported drivers/types.
-
-## Why not manual SQL assertions?
-
-Focused SQL assertions are often preferable for one or two fields. MutationBoundary becomes useful if a failure scenario might leave *unexpected INSERT/UPDATE/DELETE changes across several tables* and a structured diff makes the failure quicker to diagnose.
-
-This repository is an experiment. It will be archived if it does not deliver measurable value over normal integration-test assertions.
+For release preparation see [Release checklist](docs/RELEASING.md), [Architecture](docs/ARCHITECTURE.md), [Security policy](SECURITY.md), and [Contributing](CONTRIBUTING.md).
 
 MIT licensed.
