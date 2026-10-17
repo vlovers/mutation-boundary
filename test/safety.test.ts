@@ -62,3 +62,21 @@ test('duplicate table selection fails before invoking action', async () => {
   }), /duplicate table selection/);
   assert.equal(called, false);
 });
+
+test('pins a pool connection and releases it after verification', async () => {
+  let connects = 0;
+  let releases = 0;
+  const client = { ...db([{ id: 1 }], [{ id: 1 }]), release() { releases++; } };
+  const pool = { async connect() { connects++; return client; } };
+  await assertNoMutation({ db: pool, tables, safety, action: async () => {} });
+  assert.equal(connects, 1);
+  assert.equal(releases, 1);
+});
+test('releases pinned pool connection when mutation assertion fails', async () => {
+  let releases = 0;
+  const client = { ...db([{ id: 1 }], [{ id: 1 }, { id: 2 }]), release() { releases++; } };
+  await assert.rejects(assertNoMutation({
+    db: { async connect() { return client; } }, tables, safety, action: async () => {},
+  }), MutationBoundaryError);
+  assert.equal(releases, 1);
+});
