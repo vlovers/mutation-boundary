@@ -45,3 +45,26 @@ test('action failure propagates', async () => {
   await assert.rejects(assertNoMutation({ db: fakeDb([], []), tables, safety, action: async () => { throw new Error('injected'); } }), /injected/);
 });
 test('pg QueryResult rows adapter works', () => expectMutation([{ id: 1, status: 'pending' }], [{ id: 1, status: 'done' }], 'updated'));
+
+test('cyclic driver values fail closed instead of overflowing the stack', async () => {
+  const cyclic: Row = { id: 1 };
+  cyclic.self = cyclic;
+  await assert.rejects(
+    assertNoMutation({ db: fakeDb([cyclic], [cyclic]), tables, safety, action: async () => {} }),
+    /cyclic snapshot value/,
+  );
+});
+
+test('unsupported numeric and bigint driver values fail closed', async () => {
+  for (const value of [Number.NaN, Infinity, -Infinity, 2n, undefined]) {
+    let called = false;
+    await assert.rejects(
+      assertNoMutation({
+        db: fakeDb([{ id: 1, amount: value }], [{ id: 1, amount: value }]),
+        tables, safety, action: async () => { called = true; },
+      }),
+      /unsupported snapshot value/,
+    );
+    assert.equal(called, false);
+  }
+});
