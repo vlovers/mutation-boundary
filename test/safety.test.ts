@@ -41,3 +41,24 @@ test('detects mutation even when action throws', async () => {
 test('passes on unchanged database', async () => {
   await assertNoMutation({ db: db([{ id: 1 }], [{ id: 1 }]), tables, safety, action: async () => {} });
 });
+
+test('does not mistake a thrown undefined for a successful action', async () => {
+  await assert.rejects(
+    assertNoMutation({
+      db: db([], []), tables, safety,
+      action: async () => { throw undefined; },
+    }).then(() => { throw new Error('unexpected successful resolution'); }, error => {
+      assert.equal(error, undefined);
+      throw new Error('expected undefined rejection observed');
+    }),
+    /expected undefined rejection observed/,
+  );
+});
+test('duplicate table selection fails before invoking action', async () => {
+  let called = false;
+  await assert.rejects(assertNoMutation({
+    db: db([], []), tables: [...tables, ...tables], safety,
+    action: async () => { called = true; },
+  }), /duplicate table selection/);
+  assert.equal(called, false);
+});
