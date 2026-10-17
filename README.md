@@ -4,8 +4,9 @@
 
 [![CI](https://github.com/vlovers/mutation-boundary/actions/workflows/ci.yml/badge.svg)](https://github.com/vlovers/mutation-boundary/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![npm version](https://img.shields.io/npm/v/mutation-boundary.svg)](https://www.npmjs.com/package/mutation-boundary)
 
-> v0.1.0 release candidate (not yet published). The API remains experimental; use only isolated disposable test databases.
+> **v0.1.0** · [npm package](https://www.npmjs.com/package/mutation-boundary). The API remains experimental; use only isolated disposable test databases.
 
 An HTTP endpoint returns 500, an authorization check rejects a request, or a background job fails. **Did any committed row changes survive?** MutationBoundary compares the net state of selected PostgreSQL tables before and after an awaited action and fails the test when unexpected INSERT, UPDATE or DELETE changes remain.
 
@@ -104,8 +105,8 @@ CI provisions its own PostgreSQL 16 service and executes both suites.
 
 ## Project status
 
-The package is **not published**. The current milestone is an unpublished v0.1.0 release candidate. Final CI, reproducible installation and publication approval are required before release.
+**v0.1.0** is the initial experimental release. Install it from [npm](https://www.npmjs.com/package/mutation-boundary). The API is not yet stable; use only isolated disposable PostgreSQL test databases.
 
-For release preparation see [Release checklist](docs/RELEASING.md), [Architecture](docs/ARCHITECTURE.md), [Security policy](SECURITY.md), and [Contributing](CONTRIBUTING.md).
+For release process and verification history see [Release notes and checklist](docs/RELEASING.md), [Architecture](docs/ARCHITECTURE.md), [Security policy](SECURITY.md), and [Contributing](CONTRIBUTING.md).
 
 MIT licensed.
