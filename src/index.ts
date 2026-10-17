@@ -42,7 +42,10 @@ export async function takeBoundarySnapshot(
   if (!tables.length) throw new Error('MutationBoundary: select at least one table');
   if (!Number.isSafeInteger(maxRowsPerTable) || maxRowsPerTable < 1) throw new Error('MutationBoundary: invalid snapshot limit');
   const snapshot: Snapshot = new Map();
+  const seenTables = new Set<string>();
   for (const table of tables) {
+    if (seenTables.has(table.name)) throw new Error('MutationBoundary: duplicate table selection');
+    seenTables.add(table.name);
     const name = identifier(table.name);
     const key = identifier(table.key);
     const result = await db.query(
@@ -89,9 +92,10 @@ export async function observeFailureBoundary(
 ): Promise<RowChange[]> {
   const before = await takeBoundarySnapshot(db, tables);
   let actionError: unknown;
-  try { await action(); } catch (error) { actionError = error; }
+  let actionFailed = false;
+  try { await action(); } catch (error) { actionFailed = true; actionError = error; }
   const after = await takeBoundarySnapshot(db, tables);
-  if (actionError) throw actionError;
+  if (actionFailed) throw actionError;
   return diffBoundarySnapshots(before, after);
 }
 
@@ -131,9 +135,10 @@ export async function assertNoMutation(options: AssertNoMutationOptions): Promis
   await assertDisposableDatabase(db, safety);
   const before = await takeBoundarySnapshot(db, tables, maxRowsPerTable);
   let actionError: unknown;
-  try { await action(); } catch (error) { actionError = error; }
+  let actionFailed = false;
+  try { await action(); } catch (error) { actionFailed = true; actionError = error; }
   const after = await takeBoundarySnapshot(db, tables, maxRowsPerTable);
   const changes = diffBoundarySnapshots(before, after);
   if (changes.length) throw new MutationBoundaryError(changes, tables);
-  if (actionError !== undefined) throw actionError;
+  if (actionFailed) throw actionError;
 }
