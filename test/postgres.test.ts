@@ -34,6 +34,18 @@ test('PostgreSQL INSERT UPDATE DELETE JSONB and timestamps', async () => {
       );
     }
     await assertNoMutation({ db, tables, safety, action: async () => {} });
+    await db.query('INSERT INTO boundary_probe(id) VALUES (3)');
+    await assert.rejects(
+      assertNoMutation({ db, tables, safety, maxRowsPerTable: 1, action: async () => {} }),
+      /row limit exceeded/,
+    );
+    await assert.rejects(
+      assertNoMutation({
+        db, tables, safety: { ...safety, expectedDatabase: 'unexpected_test' },
+        action: async () => { throw new Error('action must not execute'); },
+      }),
+      /database identity does not match/,
+    );
   } finally {
     await db.end();
   }
