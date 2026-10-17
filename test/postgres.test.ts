@@ -152,3 +152,25 @@ test('PostgreSQL rolled-back writes are not incorrectly reported as surviving mu
     await db.end();
   }
 });
+
+test('single-connection pg.Pool completes when action does not acquire the pool', async () => {
+  const url = process.env.MUTATION_BOUNDARY_TEST_DATABASE_URL;
+  if (!url) throw new Error('Isolated test database URL required');
+  const pool = new pg.Pool({ connectionString: url, max: 1, connectionTimeoutMillis: 1000 });
+  const safety = {
+    expectedDatabase: 'mutation_boundary_test',
+    expectedUser: 'mutation_boundary_ci',
+    confirmDisposableTestDatabase: true as const,
+  };
+  try {
+    await pool.query('CREATE TABLE boundary_single_pool_probe (id integer PRIMARY KEY)');
+    await assertNoMutation({
+      db: pool, tables: [{ name: 'boundary_single_pool_probe', key: 'id' }],
+      safety, action: async () => {},
+    });
+    assert.equal(pool.idleCount, pool.totalCount);
+  } finally {
+    await pool.query('DROP TABLE IF EXISTS boundary_single_pool_probe');
+    await pool.end();
+  }
+});

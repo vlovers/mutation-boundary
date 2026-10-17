@@ -134,3 +134,31 @@ test('releases pinned pool connection when safety verification fails', async () 
   assert.equal(invoked, false);
   assert.equal(releases, 1);
 });
+
+test('pool releases pinned client when the action throws', async () => {
+  let releases = 0;
+  const client = { ...db([{ id: 1 }], [{ id: 1 }]), release() { releases++; } };
+  await assert.rejects(assertNoMutation({
+    db: { async connect() { return client; } }, tables, safety,
+    action: async () => { throw new Error('application failure'); },
+  }), /application failure/);
+  assert.equal(releases, 1);
+});
+
+test('pool releases pinned client when the after snapshot fails', async () => {
+  let releases = 0;
+  let reads = 0;
+  const client = {
+    async query(sql: string) {
+      if (sql.includes('current_database()')) return [{ database_name: 'mutation_boundary_test', user_name: 'test_user' }];
+      if (++reads === 2) throw new Error('after snapshot failed');
+      return [{ id: 1 }];
+    },
+    release() { releases++; },
+  };
+  await assert.rejects(assertNoMutation({
+    db: { async connect() { return client; } }, tables, safety,
+    action: async () => {},
+  }), /after snapshot failed/);
+  assert.equal(releases, 1);
+});
