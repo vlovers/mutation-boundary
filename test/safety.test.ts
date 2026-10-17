@@ -104,3 +104,33 @@ test('pg-like Client with connect and query is not connected twice', async () =>
   await assertNoMutation({ db: client, tables, safety, action: async () => {} });
   assert.equal(connects, 0);
 });
+
+test('rejects empty table selection before invoking action', async () => {
+  let invoked = false;
+  await assert.rejects(assertNoMutation({
+    db: db([], []), tables: [], safety,
+    action: async () => { invoked = true; },
+  }), /select at least one table/);
+  assert.equal(invoked, false);
+});
+
+test('rejects invalid snapshot limit before invoking action', async () => {
+  let invoked = false;
+  await assert.rejects(assertNoMutation({
+    db: db([], []), tables, safety, maxRowsPerTable: 0,
+    action: async () => { invoked = true; },
+  }), /invalid snapshot limit/);
+  assert.equal(invoked, false);
+});
+
+test('releases pinned pool connection when safety verification fails', async () => {
+  let releases = 0;
+  let invoked = false;
+  const client = { ...db([], [], 'production'), release() { releases++; } };
+  await assert.rejects(assertNoMutation({
+    db: { async connect() { return client; } }, tables, safety,
+    action: async () => { invoked = true; },
+  }), MutationBoundarySafetyError);
+  assert.equal(invoked, false);
+  assert.equal(releases, 1);
+});
