@@ -35,7 +35,7 @@ const stable = (value: unknown): string => {
   return JSON.stringify(value) ?? 'undefined';
 };
 
-export async function takeBoundarySnapshot(
+async function takeBoundarySnapshot(
   db: BoundaryDatabase,
   tables: readonly TableSpec[],
   maxRowsPerTable = 5000
@@ -67,7 +67,7 @@ export async function takeBoundarySnapshot(
   return snapshot;
 }
 
-export function diffBoundarySnapshots(before: Snapshot, after: Snapshot): RowChange[] {
+function diffBoundarySnapshots(before: Snapshot, after: Snapshot): RowChange[] {
   const changes: RowChange[] = [];
   for (const [table, oldRows] of before) {
     const newRows = after.get(table);
@@ -86,7 +86,7 @@ export function diffBoundarySnapshots(before: Snapshot, after: Snapshot): RowCha
   return changes;
 }
 
-export async function observeFailureBoundary(
+async function observeFailureBoundary(
   db: BoundaryDatabase,
   tables: readonly TableSpec[],
   action: () => Promise<void>
