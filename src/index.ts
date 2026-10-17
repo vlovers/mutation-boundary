@@ -1,6 +1,7 @@
 /** Minimal adapter: works with pg Pool/Client, TypeORM DataSource and compatible clients. */
 export type BoundaryRow = Record<string, unknown>;
-export type BoundaryDatabase = { query(sql: string): Promise<BoundaryRow[] | { rows: BoundaryRow[] }> };\nexport type BoundaryPool = { connect(): Promise<BoundaryDatabase & { release(): void }> };
+export type BoundaryDatabase = { query(sql: string): Promise<BoundaryRow[] | { rows: BoundaryRow[] }> };
+export type BoundaryPool = { connect(): Promise<BoundaryDatabase & { release(): void }> };
 
 /**
  * Experimental snapshot-based failure boundary probe.
