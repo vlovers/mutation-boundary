@@ -19,10 +19,16 @@ Ordinary assertions check the status code and expected fields. MutationBoundary 
 
 Use focused SQL assertions when only a few specific fields matter. MutationBoundary is useful when multiple related tables must remain untouched.
 
+## Installation
+
+```sh
+npm install -D @vlovers/mutation-boundary
+```
+
 ## Example
 
 ```ts
-import { assertNoMutation } from 'mutation-boundary';
+import { assertNoMutation } from '@vlovers/mutation-boundary';
 
 await assertNoMutation({
   db: testDb, // a PostgreSQL pg Client/Pool or compatible query adapter
