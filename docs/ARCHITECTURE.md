@@ -8,7 +8,7 @@ MutationBoundary is a small, TypeORM-independent PostgreSQL test assertion libra
 - `MutationBoundaryError`: table-level counts; no raw row keys or values.
 - `MutationBoundarySafetyError`: fail-closed identity/confirmation errors.
 
-## Recommended module boundaries
+## Possible future module boundaries
 
 ```text
 src/
@@ -27,6 +27,8 @@ test/
 
 This is a *target* structure; avoid unnecessary refactors before CI and package validation.
 
+The current implementation is primarily in `src/index.ts` and `src/safety.ts`; the tree above is a **proposed refactor**, not the current repository layout.
+
 ## Important decisions
 
 1. Never run actions if safety verification or baseline snapshot fails.
@@ -35,6 +37,6 @@ This is a *target* structure; avoid unnecessary refactors before CI and package 
 4. Snapshot size cap must fail closed, not truncate silently.
 5. Compare net state only; avoid claiming transaction tracing, transient write detection, or full database coverage.
 6. Avoid raw row data in public errors, logs, serialization and normal return values. Audit low-level functions before exposing them in the release.
-7. The snapshot reader and action may use different connections when given a pool. Pin a dedicated client or enforce a safe adapter contract before stable release.
+7. The high-level assertion pins a pg.Pool client for the identity check and both snapshots; the action may use another connection. A single-connection pool may deadlock. Custom adapters must guarantee stable session identity.
 8. Prefer no runtime dependencies; `pg` is a dev/test dependency.
 9. Keep Estima integration as a separate consumer proof, not a dependency of the library.
