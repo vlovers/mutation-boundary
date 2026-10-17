@@ -25,14 +25,33 @@ const identifier = (value: string) => {
   return '"' + value.replace(/"/g, '""') + '"';
 };
 const stable = (value: unknown): string => {
-  if (Object.prototype.toString.call(value) === '[object Date]') return JSON.stringify(Date.prototype.toISOString.call(value));
-  if (typeof Buffer !== 'undefined' && Buffer.isBuffer(value)) return JSON.stringify(value.toString('base64'));
-  if (Array.isArray(value)) return '[' + value.map(stable).join(',') + ']';
-  if (value && typeof value === 'object') {
-    return '{' + Object.entries(value).sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, part]) => JSON.stringify(key) + ':' + stable(part)).join(',') + '}';
-  }
-  return JSON.stringify(value) ?? 'undefined';
+  const active = new WeakSet<object>();
+  const encode = (part: unknown): string => {
+    // PostgreSQL drivers may be customized. Reject values whose snapshot
+    // representation is ambiguous instead of reporting a false no-op.
+    if (part === undefined || typeof part === 'function' || typeof part === 'symbol' ||
+        typeof part === 'bigint' || (typeof part === 'number' && !Number.isFinite(part))) {
+      throw new Error('MutationBoundary: unsupported snapshot value');
+    }
+    if (part === null || typeof part !== 'object') return JSON.stringify(part);
+    if (active.has(part)) throw new Error('MutationBoundary: cyclic snapshot value');
+    active.add(part);
+    try {
+      if (Object.prototype.toString.call(part) === '[object Date]') {
+        const date = Date.prototype.toISOString.call(part);
+        return JSON.stringify(date);
+      }
+      if (typeof Buffer !== 'undefined' && Buffer.isBuffer(part)) {
+        return JSON.stringify(part.toString('base64'));
+      }
+      if (Array.isArray(part)) return '[' + part.map(encode).join(',') + ']';
+      return '{' + Object.entries(part).sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, item]) => JSON.stringify(key) + ':' + encode(item)).join(',') + '}';
+    } finally {
+      active.delete(part);
+    }
+  };
+  return encode(value);
 };
 
 async function takeBoundarySnapshot(
@@ -57,6 +76,9 @@ async function takeBoundarySnapshot(
     if (rows.length > maxRowsPerTable) throw new Error('MutationBoundary: snapshot row limit exceeded');
     const values = new Map<string, Record<string, unknown>>();
     for (const row of rows) {
+      // Validate the full driver value before invoking the action.
+      // Otherwise unsupported data could be discovered only after writes.
+      stable(row);
       if (row[table.key] == null) throw new Error('MutationBoundary: missing row key');
       const id = stable(row[table.key]);
       if (values.has(id)) throw new Error('MutationBoundary: duplicate row key');
