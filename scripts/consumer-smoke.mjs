@@ -22,14 +22,14 @@ try {
     const consumer = join(workspace, 'consumer.mjs');
     writeFileSync(consumer, [
       "import assert from 'node:assert/strict';",
-      "import { assertNoMutation, MutationBoundaryError } from '@vlovers/mutation-boundary';",
+      "import { assertNoMutation, MutationBoundaryError } from 'mutation-boundary';",
       "assert.equal(typeof assertNoMutation, 'function');",
       "assert.equal(typeof MutationBoundaryError, 'function');",
     ].join('\n'));
     execFileSync('node', [consumer], { cwd: workspace, stdio: 'inherit' });
-    const declarations = readFileSync(join(workspace, 'node_modules', '@vlovers', 'mutation-boundary', 'dist', 'index.d.ts'), 'utf8');
+    const declarations = readFileSync(join(workspace, 'node_modules', 'mutation-boundary', 'dist', 'index.d.ts'), 'utf8');
     assert.match(declarations, /assertNoMutation/);
-    const packageJson = JSON.parse(readFileSync(join(workspace, 'node_modules', '@vlovers', 'mutation-boundary', 'package.json'), 'utf8'));
+    const packageJson = JSON.parse(readFileSync(join(workspace, 'node_modules', 'mutation-boundary', 'package.json'), 'utf8'));
     assert.equal(packageJson.main, './dist/index.js');
     assert.equal(packageJson.types, './dist/index.d.ts');
     const tarballListing = execFileSync('tar', ['-tzf', tarball], { encoding: 'utf8' });
@@ -37,11 +37,11 @@ try {
     assert.ok(tarballListing.includes('package/dist/index.d.ts'));
     assert.ok(!tarballListing.includes('package/src/'));
     const cjsConsumer = join(workspace, 'consumer.cjs');
-    writeFileSync(cjsConsumer, "const assert = require('node:assert/strict'); const pkg = require('@vlovers/mutation-boundary'); assert.equal(typeof pkg.assertNoMutation, 'function');");
+    writeFileSync(cjsConsumer, "const assert = require('node:assert/strict'); const pkg = require('mutation-boundary'); assert.equal(typeof pkg.assertNoMutation, 'function');");
     execFileSync('node', [cjsConsumer], { cwd: workspace, stdio: 'inherit' });
     const typeConsumer = join(workspace, 'consumer.ts');
     writeFileSync(typeConsumer, [
-      "import { assertNoMutation, MutationBoundaryError, type AssertNoMutationOptions } from '@vlovers/mutation-boundary';",
+      "import { assertNoMutation, MutationBoundaryError, type AssertNoMutationOptions } from 'mutation-boundary';",
       "const check: typeof assertNoMutation = assertNoMutation;",
       "const options: AssertNoMutationOptions | undefined = undefined;",
       "void check; void options; void MutationBoundaryError;",
