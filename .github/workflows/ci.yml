@@ -36,3 +36,5 @@ jobs:
       - run: npm test
       - run: npm run test:postgres
       - run: npm run build
+      - run: npm pack --dry-run
+      - run: node --input-type=module -e "import('./dist/index.js').then(m => { if (typeof m.assertNoMutation !== 'function') process.exit(1) })"
