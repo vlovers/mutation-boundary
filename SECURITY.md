@@ -11,7 +11,7 @@ Do not attach connection strings, access tokens, SQL dumps or customer records t
 ## Threat model
 
 - A database named `*_test` is not necessarily disposable; naming and role checks are only guardrails.
-- The current low-level APIs can expose raw rows and must not be used with secrets.
+- Internal snapshots hold raw rows in process memory; never run against sensitive, shared or production data.
 - Query-driver errors and exceptions from user-supplied actions can contain sensitive information.
 - Snapshot comparisons cannot prove that no transient write occurred, and cannot observe other systems.
 - Concurrent writers, asynchronous jobs and pooled connection switching can invalidate assumptions.
