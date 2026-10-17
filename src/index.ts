@@ -95,9 +95,9 @@ export async function observeFailureBoundary(
   return diffBoundarySnapshots(before, after);
 }
 
-export { assertDisposableDatabase, MutationBoundarySafetyError } from './safety.js';
-export type { DatabaseSafety } from './safety.js';
-import { assertDisposableDatabase, type DatabaseSafety } from './safety.js';
+export { assertDisposableDatabase, MutationBoundarySafetyError } from './safety.ts';
+export type { DatabaseSafety } from './safety.ts';
+import { assertDisposableDatabase, type DatabaseSafety } from './safety.ts';
 
 export type AssertNoMutationOptions = {
   db: BoundaryDatabase;
