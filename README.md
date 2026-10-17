@@ -59,7 +59,7 @@ The high-level mutation report contains counts and table names, **not row values
 
 **Only use disposable, isolated, quiescent PostgreSQL test databases.** The explicit confirmation and database/user identity check help catch mistakes, but do **not** prove a database is disposable. Never reuse production credentials. See [Safety and limitations](docs/SAFETY.md).
 
-The current implementation has an important limitation: it cannot guarantee that queries on a pooled connection all use the same physical PostgreSQL session. Use a dedicated connection for sensitive test setups, and do not rely on temporary tables with a general-purpose pool. Low-level snapshot functions are experimental and can expose row values.
+When given a `pg.Pool`, the high-level assertion now checks out one client for the safety query and both snapshots, releasing it afterward. **The action runs while that client is checked out**: ensure the pool has enough free connections for the action (a `max: 1` pool can deadlock if the action queries the same pool). Prefer a dedicated `pg.Client` for test setups with temporary tables. Other custom query adapters must themselves guarantee stable connection identity. This guard does not prove the database is disposable. Low-level snapshot functions are experimental and can expose row values.
 
 ## What it detects
 
