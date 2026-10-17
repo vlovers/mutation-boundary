@@ -19,6 +19,12 @@ Ordinary assertions check the status code and expected fields. MutationBoundary 
 
 Use focused SQL assertions when only a few specific fields matter. MutationBoundary is useful when multiple related tables must remain untouched.
 
+## Installation
+
+```sh
+npm install -D mutation-boundary
+```
+
 ## Example
 
 ```ts
