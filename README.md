@@ -61,7 +61,7 @@ The high-level mutation report contains counts and table names, **not row values
 
 **Only use disposable, isolated, quiescent PostgreSQL test databases.** The explicit confirmation and database/user identity check help catch mistakes, but do **not** prove a database is disposable. Never reuse production credentials. See [Safety and limitations](docs/SAFETY.md).
 
-When given a `pg.Pool`, the high-level assertion now checks out one client for the safety query and both snapshots, releasing it afterward. **The action runs while that client is checked out**: ensure the pool has enough free connections for the action (a `max: 1` pool can deadlock if the action queries the same pool). Prefer a dedicated `pg.Client` for test setups with temporary tables. Other custom query adapters must themselves guarantee stable connection identity. This guard does not prove the database is disposable. Low-level snapshot functions are experimental and can expose row values.
+When given a `pg.Pool`, the high-level assertion now checks out one client for the safety query and both snapshots, releasing it afterward. **The action runs while that client is checked out**: ensure the pool has enough free connections for the action (a `max: 1` pool can deadlock if the action queries the same pool). Prefer a dedicated `pg.Client` for test setups with temporary tables. Other custom query adapters must themselves guarantee stable connection identity. This guard does not prove the database is disposable. Raw snapshot helpers are internal and are not exported from the package. They still hold row values in process memory; use disposable test data only.
 
 ## What it detects
 
@@ -98,7 +98,7 @@ CI provisions its own PostgreSQL 16 service and executes both suites.
 
 ## Project status
 
-The package is **not published**. The current milestone is v0.1.0, subject to safety review, reproducible CI, an external consumer installation test and a documented stable public API.
+The package is **not published**. The current milestone is an unpublished v0.1.0 release candidate. Final CI, reproducible installation and publication approval are required before release.
 
 For release preparation see [Release checklist](docs/RELEASING.md), [Architecture](docs/ARCHITECTURE.md), [Security policy](SECURITY.md), and [Contributing](CONTRIBUTING.md).
 
