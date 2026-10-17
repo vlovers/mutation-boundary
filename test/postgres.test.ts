@@ -51,3 +51,39 @@ test('PostgreSQL INSERT UPDATE DELETE JSONB and timestamps', async () => {
     await db.end();
   }
 });
+
+test('real pg.Pool pins a connection and observes committed changes', async () => {
+  const url = process.env.MUTATION_BOUNDARY_TEST_DATABASE_URL;
+  if (!url) throw new Error('Isolated test database URL required');
+  const pool = new pg.Pool({ connectionString: url, max: 2 });
+  const safety = {
+    expectedDatabase: 'mutation_boundary_test',
+    expectedUser: 'mutation_boundary_ci',
+    confirmDisposableTestDatabase: true as const,
+  };
+  const table = 'boundary_pool_probe';
+  try {
+    await pool.query('CREATE TABLE ' + table + ' (id integer PRIMARY KEY, value text)');
+    await assert.rejects(
+      assertNoMutation({
+        db: pool,
+        tables: [{ name: table, key: 'id' }],
+        safety,
+        action: async () => {
+          await pool.query('INSERT INTO ' + table + " (id, value) VALUES (1, 'changed')");
+        },
+      }),
+      MutationBoundaryError,
+    );
+    await assertNoMutation({
+      db: pool,
+      tables: [{ name: table, key: 'id' }],
+      safety,
+      action: async () => {},
+    });
+    assert.equal(pool.idleCount, pool.totalCount);
+  } finally {
+    await pool.query('DROP TABLE IF EXISTS ' + table);
+    await pool.end();
+  }
+});
