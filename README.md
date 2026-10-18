@@ -150,6 +150,6 @@ CI provisions its own PostgreSQL 16 service and executes both suites.
 
 **v0.2.0** is published on [npm](https://www.npmjs.com/package/mutation-boundary) and [GitHub Releases](https://github.com/vlovers/mutation-boundary/releases/tag/v0.2.0). The API is not yet stable; use only isolated disposable PostgreSQL test databases.
 
-For release process and verification history see [Release notes and checklist](docs/RELEASING.md), [Architecture](docs/ARCHITECTURE.md), [Security policy](SECURITY.md), and [Contributing](CONTRIBUTING.md).
+For release process and verification history see [v0.2.0 release notes](docs/RELEASE_NOTES_v0.2.0.md) and [Release checklist](docs/RELEASING.md), [Architecture](docs/ARCHITECTURE.md), [Security policy](SECURITY.md), and [Contributing](CONTRIBUTING.md).
 
 MIT licensed.
