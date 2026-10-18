@@ -214,7 +214,7 @@ test('row filter forwards user text only as a query parameter', async () => {
   });
   assert.equal(executed, true);
   assert.doesNotMatch(seenSQL, /OR true/);
-  assert.match(seenSQL, /IS NOT DISTINCT FROM \\$1/);
+  assert.ok(seenSQL.includes('IS NOT DISTINCT FROM $1'));
   assert.deepEqual(seenValues, [injection]);
 });
 
