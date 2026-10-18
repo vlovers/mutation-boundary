@@ -138,7 +138,14 @@ test('sparse arrays and accessors fail closed without executing the action', asy
   for (const payload of [sparse, accessor]) {
     let executed = false;
     await assert.rejects(assertNoMutation({
-      db: fakeDb([{ id: 1, payload }], [{ id: 1, payload }]),
+      db: {
+        async query(sql: string) {
+          if (sql.includes('current_database()')) {
+            return [{ database_name: 'mutation_boundary_test', user_name: 'test_user' }];
+          }
+          return [{ id: 1, payload }];
+        },
+      },
       tables, safety, action: async () => { executed = true; },
     }), /unsupported snapshot array|unsupported snapshot accessor/);
     assert.equal(executed, false);
