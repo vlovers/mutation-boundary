@@ -158,3 +158,45 @@ test('sparse arrays and accessors fail closed without executing the action', asy
     assert.equal(executed, false);
   }
 });
+
+
+test('snapshot limit diagnostics identify the selected table without row values', async () => {
+  const fixture = {
+    async query(sql: string) {
+      if (sql.includes('current_database()')) return [{ database_name: 'mutation_boundary_test', user_name: 'test_user' }];
+      return [{ id: 1, secret: 'do-not-leak' }, { id: 2, secret: 'do-not-leak' }];
+    },
+  };
+  let actionCalled = false;
+  await assert.rejects(assertNoMutation({
+    db: fixture, tables: [{ name: 'tasks', key: 'id' }],
+    safety, maxRowsPerTable: 1,
+    action: async () => { actionCalled = true; },
+  }), (error: unknown) => {
+    assert.ok(error instanceof Error);
+    assert.match(error.message, /snapshot row limit exceeded for table tasks \(limit 1\)/);
+    assert.doesNotMatch(error.message, /do-not-leak/);
+    return true;
+  });
+  assert.equal(actionCalled, false);
+});
+
+test('unsupported snapshot values report a table but never disclose contents', async () => {
+  const fixture = {
+    async query(sql: string) {
+      if (sql.includes('current_database()')) return [{ database_name: 'mutation_boundary_test', user_name: 'test_user' }];
+      return [{ id: 1, secret: { private: 'do-not-leak', invalid: undefined } }];
+    },
+  };
+  let actionCalled = false;
+  await assert.rejects(assertNoMutation({
+    db: fixture, tables: [{ name: 'tasks', key: 'id' }], safety,
+    action: async () => { actionCalled = true; },
+  }), (error: unknown) => {
+    assert.ok(error instanceof Error);
+    assert.match(error.message, /unsupported snapshot value in table tasks/);
+    assert.doesNotMatch(error.message, /do-not-leak/);
+    return true;
+  });
+  assert.equal(actionCalled, false);
+});

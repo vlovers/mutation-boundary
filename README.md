@@ -107,6 +107,8 @@ tables: [
 
 Available in v0.2.0.
 
+For executable integration patterns and connection-lifecycle caveats, see [pg.Client and pg.Pool recipes](docs/PG_RECIPES.md).
+
 ## Safety first
 
 **Only use disposable, isolated, quiescent PostgreSQL test databases.** The explicit confirmation and database/user identity check help catch mistakes, but do **not** prove a database is disposable. Never reuse production credentials. See [Safety and limitations](docs/SAFETY.md).

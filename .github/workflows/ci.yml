@@ -41,8 +41,20 @@ jobs:
       - run: npm test
       - run: npm run test:postgres
       - run: npm run build
+      - name: Install integration consumer dependencies
+        run: npm install --no-save --package-lock=false --ignore-scripts --no-audit --no-fund typeorm@0.3.27 @nestjs/common@11.1.6 @nestjs/core@11.1.6 reflect-metadata@0.2.2 rxjs@7.8.2 jest@30.2.0 @jest/globals@30.2.0 vitest@3.2.4
+      - name: Real TypeORM and NestJS PostgreSQL consumers
+        run: node --experimental-strip-types --test test/typeorm-nestjs.test.mjs
+      - name: Jest ESM consumer
+        env:
+          NODE_OPTIONS: --experimental-vm-modules --experimental-strip-types
+        run: npx --no-install jest --runInBand --runTestsByPath test/runners/jest.test.mjs --testMatch '**/*.test.mjs'
+      - name: Vitest ESM consumer
+        env:
+          NODE_OPTIONS: --experimental-strip-types
+        run: npx --no-install vitest run test/runners/vitest.test.mjs
       - run: npm pack --dry-run
       - run: npm run test:consumer
-      - name: Validate published npm 0.1.0 in a clean consumer
-        run: npm run test:registry -- mutation-boundary@0.1.0
+      - name: Validate published npm 0.2.0 in a clean consumer
+        run: npm run test:registry -- mutation-boundary@0.2.0
       - run: node --input-type=module -e "import('./dist/index.js').then(m => { if (typeof m.assertNoMutation !== 'function') process.exit(1) })"

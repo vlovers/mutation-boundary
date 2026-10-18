@@ -263,3 +263,37 @@ test('includeColumns and excludeColumns ignore volatile timestamps but detect se
     await db.end();
   }
 });
+
+
+test('single-connection pool fails with a bounded timeout when action also acquires it', async () => {
+  const url = process.env.MUTATION_BOUNDARY_TEST_DATABASE_URL;
+  if (!url) throw new Error('Isolated test database URL required');
+  const pool = new pg.Pool({ connectionString: url, max: 1, connectionTimeoutMillis: 300 });
+  const safety = {
+    expectedDatabase: 'mutation_boundary_test',
+    expectedUser: 'mutation_boundary_ci',
+    confirmDisposableTestDatabase: true as const,
+  };
+  try {
+    await pool.query('CREATE TABLE boundary_pool_contention_probe (id integer PRIMARY KEY)');
+    await assert.rejects(assertNoMutation({
+      db: pool,
+      tables: [{ name: 'boundary_pool_contention_probe', key: 'id' }],
+      safety,
+      action: async () => { await pool.query('SELECT 1'); },
+    }), /timeout/i);
+    assert.equal(pool.idleCount, pool.totalCount, 'snapshot client must be returned even when action fails');
+    await assertNoMutation({
+      db: pool,
+      tables: [{ name: 'boundary_pool_contention_probe', key: 'id' }],
+      safety,
+      action: async () => {},
+    });
+  } finally {
+    try {
+      await pool.query('DROP TABLE IF EXISTS boundary_pool_contention_probe');
+    } finally {
+      await pool.end();
+    }
+  }
+});

@@ -36,6 +36,8 @@ Released on GitHub and published through npm Trusted Publishing. The following c
 
 ## v0.3.0 — integration ergonomics (P1)
 
+Implementation evidence, specific supported scenarios and remaining release gates are tracked in [v0.3.0 integrations](docs/V030_INTEGRATIONS.md). Independent PR work is ongoing; v0.3.0 is not yet published.
+
 - [ ] Verified minimal `pg.Client` and `pg.Pool` recipes, including connection-pool sizing.
 - [ ] Runnable NestJS/TypeORM example based on a disposable database.
 - [ ] Jest/Vitest helpers only if they remove real repeated setup; avoid unnecessary framework coupling.
