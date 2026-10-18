@@ -208,3 +208,29 @@ test('schema-qualified tables and composite row keys detect surviving mutations'
     await db.end();
   }
 });
+
+test('parameterized row filter scopes changes to selected tenant', async () => {
+  const url = process.env.MUTATION_BOUNDARY_TEST_DATABASE_URL;
+  if (!url) throw new Error('Isolated test database URL required');
+  const db = new pg.Client({ connectionString: url });
+  await db.connect();
+  const safety = { expectedDatabase: 'mutation_boundary_test', expectedUser: 'mutation_boundary_ci', confirmDisposableTestDatabase: true as const };
+  try {
+    await assertDisposableDatabase(db, safety);
+    await db.query('CREATE TEMP TABLE boundary_filter_probe (id integer PRIMARY KEY, tenant_id text, state text)');
+    await db.query("INSERT INTO boundary_filter_probe VALUES (1, 'tenant-a', 'open'), (2, 'tenant-b', 'open'), (3, NULL, 'open')");
+    const tables = [{ name: 'boundary_filter_probe', key: 'id', where: { column: 'tenant_id', equals: 'tenant-a' } }];
+    await assertNoMutation({ db, tables, safety, action: async () => {
+      await db.query("UPDATE boundary_filter_probe SET state = 'done' WHERE id = 2");
+    } });
+    await assert.rejects(assertNoMutation({ db, tables, safety, action: async () => {
+      await db.query("UPDATE boundary_filter_probe SET state = 'done' WHERE id = 1");
+    } }), MutationBoundaryError);
+    await assert.rejects(assertNoMutation({
+      db, tables: [{ name: 'boundary_filter_probe', key: 'id', where: { column: 'tenant_id', equals: null } }],
+      safety, action: async () => { await db.query("UPDATE boundary_filter_probe SET state = 'done' WHERE id = 3"); },
+    }), MutationBoundaryError);
+  } finally {
+    await db.end();
+  }
+});
