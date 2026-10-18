@@ -78,6 +78,20 @@ The existing `{ name: 'tasks', key: 'id' }` API remains valid. Names must consis
 
 **Not part of published 0.1.1**; pending review and CI. Additional v0.2 milestones (row filters and column selection) will be separate changes.
 
+## v0.2 development preview: parameterized row filters
+
+Optionally scope snapshots to rows matching one column by exact equality:
+
+```ts
+tables: [
+  { name: 'public.tasks', key: 'id', where: { column: 'tenant_id', equals: 'tenant-a' } },
+]
+```
+
+`equals: null` matches SQL NULL using `IS NOT DISTINCT FROM`. Filter values are sent as PostgreSQL bind parameters, not interpolated into SQL. Column and table identifiers are validated separately. Only one equality condition per table is supported in this increment; arbitrary SQL fragments, operators, and OR predicates are not accepted. The same filter is applied before and after the action. A row changing into or out of scope appears as an insertion or deletion within that selected subset.
+
+**Development only:** not included in the published 0.1.x package. Use isolated disposable PostgreSQL test databases.
+
 ## Safety first
 
 **Only use disposable, isolated, quiescent PostgreSQL test databases.** The explicit confirmation and database/user identity check help catch mistakes, but do **not** prove a database is disposable. Never reuse production credentials. See [Safety and limitations](docs/SAFETY.md).
