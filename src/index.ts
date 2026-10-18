@@ -1,6 +1,6 @@
 /** Minimal adapter: works with pg Pool/Client, TypeORM DataSource and compatible clients. */
 export type BoundaryRow = Record<string, unknown>;
-export type BoundaryDatabase = { query(sql: string): Promise<BoundaryRow[] | { rows: BoundaryRow[] }> };
+export type BoundaryDatabase = { query(sql: string, values?: readonly unknown[]): Promise<BoundaryRow[] | { rows: BoundaryRow[] }> };
 export type BoundaryPool = { connect(): Promise<BoundaryDatabase & { release(): void }> };
 
 /**
@@ -16,7 +16,7 @@ type RowChange = {
   after?: Record<string, unknown>;
 };
 
-export type TableSpec = { name: string; key: string | readonly string[] };
+export type TableSpec = { name: string; key: string | readonly string[]; where?: { column: string; equals: string | number | boolean | null } };
 type Snapshot = Map<string, Map<string, Record<string, unknown>>>;
 const identifier = (value: string) => {
   if (!/^[a-z_][a-z_0-9]*$/i.test(value)) {
@@ -85,8 +85,17 @@ async function takeBoundarySnapshot(
     const name = tableIdentifier(table.name);
     const columns = keyColumns(table.key);
     const order = columns.map(identifier).join(', ');
+    const filter = table.where;
+    if (filter && (!filter.column || !['string', 'number', 'boolean'].includes(typeof filter.equals) && filter.equals !== null)) {
+      throw new Error('MutationBoundary: invalid row filter');
+    }
+    if (filter && typeof filter.equals === 'number' && !Number.isFinite(filter.equals)) {
+      throw new Error('MutationBoundary: invalid row filter');
+    }
+    const whereClause = filter ? ` WHERE ${identifier(filter.column)} IS NOT DISTINCT FROM $1` : '';
     const result = await db.query(
-      `SELECT * FROM ${name} ORDER BY ${order} LIMIT ${maxRowsPerTable + 1}`
+      `SELECT * FROM ${name}${whereClause} ORDER BY ${order} LIMIT ${maxRowsPerTable + 1}`,
+      filter ? [filter.equals] : undefined,
     );
     const rows = Array.isArray(result) ? result : result.rows;
     if (!Array.isArray(rows)) throw new Error('MutationBoundary: unsupported query result');
