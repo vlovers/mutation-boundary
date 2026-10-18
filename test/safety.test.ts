@@ -162,3 +162,25 @@ test('pool releases pinned client when the after snapshot fails', async () => {
   }), /after snapshot failed/);
   assert.equal(releases, 1);
 });
+
+test('composite keys reject empty and repeated columns before executing action', async () => {
+  for (const key of [[], ['id', 'id'], ['id', 'bad;column']]) {
+    let executed = false;
+    await assert.rejects(assertNoMutation({
+      db: db([], []), tables: [{ name: 'tasks', key }],
+      safety, action: async () => { executed = true; },
+    }), /invalid row key|unsafe SQL identifier/);
+    assert.equal(executed, false);
+  }
+});
+
+test('schema-qualified name rejects extra dot or unsafe component', async () => {
+  for (const name of ['one.two.three', 'public.tasks;drop', '.tasks']) {
+    let executed = false;
+    await assert.rejects(assertNoMutation({
+      db: db([], []), tables: [{ name, key: 'id' }],
+      safety, action: async () => { executed = true; },
+    }), /invalid schema-qualified table|unsafe SQL identifier/);
+    assert.equal(executed, false);
+  }
+});
