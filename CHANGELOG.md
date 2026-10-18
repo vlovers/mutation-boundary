@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 — integration ergonomics
+
+- Add PostgreSQL pg.Client and pg.Pool usage recipes and a real single-connection pool timeout/recovery regression.
+- Verify TypeORM DataSource and NestJS application-context services against disposable PostgreSQL 16 in CI.
+- Verify ESM consumer usage with Jest 30 and Vitest 3; no framework-specific runtime wrappers.
+- Improve snapshot validation diagnostics with selected table context while preserving row-value redaction.
+- Add integration support matrix and release gates; unify CI dependency installation to avoid no-save package pruning.
+
+**Compatibility:** The existing assertion API and disposable-database guardrails remain unchanged. NestJS verification is limited to application context, not HTTP or @nestjs/typeorm. Requires Node.js 24+. Published v0.3.0 requires successful tag CI and npm publish verification.
+
 All notable changes will be documented here.
 
 ## 0.2.0 — scoped snapshots (published 2026-10-18)

@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![npm version](https://img.shields.io/npm/v/mutation-boundary.svg)](https://www.npmjs.com/package/mutation-boundary)
 
-> **v0.2.0** · [npm package](https://www.npmjs.com/package/mutation-boundary). The API remains experimental; use only isolated disposable test databases.
+> **v0.3.0 release candidate** · [npm package](https://www.npmjs.com/package/mutation-boundary). The API remains experimental; use only isolated disposable test databases.
 
 An HTTP endpoint returns 500, an authorization check rejects a request, or a background job fails. **Did any committed row changes survive?** MutationBoundary compares the net state of selected PostgreSQL tables before and after an awaited action and fails the test when unexpected INSERT, UPDATE or DELETE changes remain.
 
@@ -147,6 +147,10 @@ npm run test:postgres
 ```
 
 CI provisions its own PostgreSQL 16 service and executes both suites.
+
+## Integration compatibility (v0.3.0)
+
+The upcoming v0.3.0 release adds tested Node 24 + PostgreSQL 16 integration consumers for TypeORM DataSource, NestJS application context, Jest and Vitest. See [integration evidence and limitations](docs/V030_INTEGRATIONS.md). Published installations remain on v0.2.0 until the new version is verified on npm.
 
 ## Project status
 
