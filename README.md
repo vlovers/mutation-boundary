@@ -64,6 +64,20 @@ Database mutation contract violated.
 
 The high-level mutation report contains counts and table names, **not row values or keys**.
 
+## v0.2 development preview: qualified tables and composite keys
+
+The feature branch introduces explicit schema-qualified names and composite identifiers:
+
+```ts
+tables: [
+  { name: 'tenant_data.memberships', key: ['tenant_id', 'member_id'] },
+]
+```
+
+The existing `{ name: 'tasks', key: 'id' }` API remains valid. Names must consist of one or two simple SQL identifiers separated by a dot; columns must be unique and non-empty. Quoted/complex PostgreSQL identifiers are not supported. Composite keys are required to uniquely identify each row, and the library still checks **net state** only.
+
+**Not part of published 0.1.1**; pending review and CI. Additional v0.2 milestones (row filters and column selection) will be separate changes.
+
 ## Safety first
 
 **Only use disposable, isolated, quiescent PostgreSQL test databases.** The explicit confirmation and database/user identity check help catch mistakes, but do **not** prove a database is disposable. Never reuse production credentials. See [Safety and limitations](docs/SAFETY.md).

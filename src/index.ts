@@ -16,13 +16,29 @@ type RowChange = {
   after?: Record<string, unknown>;
 };
 
-export type TableSpec = { name: string; key: string };
+export type TableSpec = { name: string; key: string | readonly string[] };
 type Snapshot = Map<string, Map<string, Record<string, unknown>>>;
 const identifier = (value: string) => {
   if (!/^[a-z_][a-z_0-9]*$/i.test(value)) {
     throw new Error('MutationBoundary: unsafe SQL identifier');
   }
   return '"' + value.replace(/"/g, '""') + '"';
+};
+const tableIdentifier = (name: string): string => {
+  const parts = name.split('.');
+  if (parts.length < 1 || parts.length > 2) {
+    throw new Error('MutationBoundary: invalid schema-qualified table');
+  }
+  return parts.map(identifier).join('.');
+};
+const keyColumns = (key: TableSpec['key']): readonly string[] => {
+  const columns = typeof key === 'string' ? [key] : key;
+  if (!Array.isArray(columns) || columns.length === 0 ||
+      new Set(columns).size !== columns.length) {
+    throw new Error('MutationBoundary: invalid row key');
+  }
+  for (const column of columns) identifier(column);
+  return columns;
 };
 const stable = (value: unknown): string => {
   const active = new WeakSet<object>();
@@ -66,10 +82,11 @@ async function takeBoundarySnapshot(
   for (const table of tables) {
     if (seenTables.has(table.name)) throw new Error('MutationBoundary: duplicate table selection');
     seenTables.add(table.name);
-    const name = identifier(table.name);
-    const key = identifier(table.key);
+    const name = tableIdentifier(table.name);
+    const columns = keyColumns(table.key);
+    const order = columns.map(identifier).join(', ');
     const result = await db.query(
-      `SELECT * FROM ${name} ORDER BY ${key} LIMIT ${maxRowsPerTable + 1}`
+      `SELECT * FROM ${name} ORDER BY ${order} LIMIT ${maxRowsPerTable + 1}`
     );
     const rows = Array.isArray(result) ? result : result.rows;
     if (!Array.isArray(rows)) throw new Error('MutationBoundary: unsupported query result');
@@ -79,8 +96,9 @@ async function takeBoundarySnapshot(
       // Validate the full driver value before invoking the action.
       // Otherwise unsupported data could be discovered only after writes.
       stable(row);
-      if (row[table.key] == null) throw new Error('MutationBoundary: missing row key');
-      const id = stable(row[table.key]);
+      const parts = columns.map(column => row[column]);
+      if (parts.some(part => part == null)) throw new Error('MutationBoundary: missing row key');
+      const id = stable(parts);
       if (values.has(id)) throw new Error('MutationBoundary: duplicate row key');
       values.set(id, row);
     }
