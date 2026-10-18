@@ -42,7 +42,11 @@ const keyColumns = (key: TableSpec['key']): readonly string[] => {
 };
 const stable = (value: unknown): string => {
   const active = new WeakSet<object>();
-  const encode = (part: unknown): string => {
+  const encode = (part: unknown, depth = 0): string => {
+    if (depth > 64) throw new Error('MutationBoundary: snapshot nesting limit exceeded');
+    if (typeof part === 'string' && Buffer.byteLength(part, 'utf8') > 1024 * 1024) {
+      throw new Error('MutationBoundary: snapshot scalar size limit exceeded');
+    }
     // PostgreSQL drivers may be customized. Reject values whose snapshot
     // representation is ambiguous instead of reporting a false no-op.
     if (part === undefined || typeof part === 'function' || typeof part === 'symbol' ||
@@ -58,11 +62,21 @@ const stable = (value: unknown): string => {
         return JSON.stringify(date);
       }
       if (typeof Buffer !== 'undefined' && Buffer.isBuffer(part)) {
+        if (part.byteLength > 1024 * 1024) throw new Error('MutationBoundary: snapshot scalar size limit exceeded');
         return JSON.stringify(part.toString('base64'));
       }
-      if (Array.isArray(part)) return '[' + part.map(encode).join(',') + ']';
-      return '{' + Object.entries(part).sort(([a], [b]) => a.localeCompare(b))
-        .map(([key, item]) => JSON.stringify(key) + ':' + encode(item)).join(',') + '}';
+      if (part instanceof Uint8Array) {
+        if (part.byteLength > 1024 * 1024) throw new Error('MutationBoundary: snapshot scalar size limit exceeded');
+        return JSON.stringify(Buffer.from(part).toString('base64'));
+      }
+      if (Array.isArray(part)) {
+        if (part.length > 10000) throw new Error('MutationBoundary: snapshot collection size limit exceeded');
+        return '[' + part.map(item => encode(item, depth + 1)).join(',') + ']';
+      }
+      const entries = Object.entries(part);
+      if (entries.length > 10000) throw new Error('MutationBoundary: snapshot collection size limit exceeded');
+      return '{' + entries.sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, item]) => JSON.stringify(key) + ':' + encode(item, depth + 1)).join(',') + '}';
     } finally {
       active.delete(part);
     }
@@ -76,7 +90,7 @@ async function takeBoundarySnapshot(
   maxRowsPerTable = 5000
 ): Promise<Snapshot> {
   if (!tables.length) throw new Error('MutationBoundary: select at least one table');
-  if (!Number.isSafeInteger(maxRowsPerTable) || maxRowsPerTable < 1) throw new Error('MutationBoundary: invalid snapshot limit');
+  if (!Number.isSafeInteger(maxRowsPerTable) || maxRowsPerTable < 1 || maxRowsPerTable > 50000) throw new Error('MutationBoundary: invalid snapshot limit');
   const snapshot: Snapshot = new Map();
   const seenTables = new Set<string>();
   for (const table of tables) {

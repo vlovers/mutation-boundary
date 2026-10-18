@@ -35,3 +35,7 @@ Raw snapshot and diff helpers are internal implementation details, not public pa
 - Action errors are rethrown if no mutation is detected. If mutations are detected, the mutation contract error takes precedence.
 - v0.1.0 has been released. For any subsequent version, verify PostgreSQL CI, package contents, connection safety and a clean external installation before publication.
 - In v0.1.1 development, unsupported driver values (undefined, non-finite numbers, bigint, functions and symbols) and cyclic structures fail closed rather than silently comparing ambiguous snapshots. This is not a guarantee that every custom driver representation is handled.
+
+## v0.2 development: bounded snapshot representations
+
+The experimental resource-bound branch rejects snapshot nesting deeper than 64 levels, individual text/binary scalars above 1 MiB, arrays/objects with more than 10,000 entries, and a requested row cap above 50,000. These limits may reject legitimate large test fixtures and are intentionally fail-closed before the action for initial snapshots. They are **not** a total memory or execution-time budget; a table with many large rows or a large number of selected tables can still use significant memory. Use small isolated fixtures and enforce CI process limits separately. No constraint guarantees stability for concurrent writes.
