@@ -234,3 +234,32 @@ test('parameterized row filter scopes changes to selected tenant', async () => {
     await db.end();
   }
 });
+
+test('includeColumns and excludeColumns ignore volatile timestamps but detect selected changes', async () => {
+  const url = process.env.MUTATION_BOUNDARY_TEST_DATABASE_URL;
+  if (!url) throw new Error('Isolated test database URL required');
+  const db = new pg.Client({ connectionString: url });
+  await db.connect();
+  const safety = { expectedDatabase: 'mutation_boundary_test', expectedUser: 'mutation_boundary_ci', confirmDisposableTestDatabase: true as const };
+  try {
+    await assertDisposableDatabase(db, safety);
+    await db.query('CREATE TEMP TABLE boundary_column_probe (id integer PRIMARY KEY, tenant_id text, status text, updated_at integer)');
+    await db.query("INSERT INTO boundary_column_probe VALUES (1, 'a', 'open', 1)");
+    const excluded = [{ name: 'boundary_column_probe', key: 'id', excludeColumns: ['updated_at'] }];
+    await assertNoMutation({ db, tables: excluded, safety, action: async () => {
+      await db.query('UPDATE boundary_column_probe SET updated_at = 2 WHERE id = 1');
+    } });
+    const included = [{ name: 'boundary_column_probe', key: 'id', includeColumns: ['status'] }];
+    await assertNoMutation({ db, tables: included, safety, action: async () => {
+      await db.query("UPDATE boundary_column_probe SET tenant_id = 'b' WHERE id = 1");
+    } });
+    await assert.rejects(assertNoMutation({ db, tables: included, safety, action: async () => {
+      await db.query("UPDATE boundary_column_probe SET status = 'done' WHERE id = 1");
+    } }), MutationBoundaryError);
+    await assert.rejects(assertNoMutation({ db, tables: excluded, safety, action: async () => {
+      await db.query("UPDATE boundary_column_probe SET status = 'closed' WHERE id = 1");
+    } }), MutationBoundaryError);
+  } finally {
+    await db.end();
+  }
+});
