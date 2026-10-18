@@ -71,7 +71,21 @@ const stable = (value: unknown): string => {
       }
       if (Array.isArray(part)) {
         if (part.length > 10000) throw new Error('MutationBoundary: snapshot collection size limit exceeded');
+        if (Object.keys(part).length !== part.length) {
+          throw new Error('MutationBoundary: unsupported snapshot array');
+        }
         return '[' + part.map(item => encode(item, depth + 1)).join(',') + ']';
+      }
+      const prototype = Object.getPrototypeOf(part);
+      if (prototype !== Object.prototype && prototype !== null) {
+        throw new Error('MutationBoundary: unsupported snapshot object type');
+      }
+      if (Object.getOwnPropertySymbols(part).length) {
+        throw new Error('MutationBoundary: unsupported snapshot symbol keys');
+      }
+      const descriptors = Object.getOwnPropertyDescriptors(part);
+      if (Object.values(descriptors).some(descriptor => !('value' in descriptor))) {
+        throw new Error('MutationBoundary: unsupported snapshot accessor');
       }
       const entries = Object.entries(part);
       if (entries.length > 10000) throw new Error('MutationBoundary: snapshot collection size limit exceeded');

@@ -119,3 +119,42 @@ test('typed Date and binary values with identical contents compare as unchanged'
     tables, safety, action: async () => {},
   });
 });
+
+test('unsupported Map Set and class values fail closed before running the action', async () => {
+  class CustomValue { value = 1; }
+  for (const payload of [new Map([['a', 1]]), new Set([1]), new CustomValue()]) {
+    let executed = false;
+    await assert.rejects(assertNoMutation({
+      db: {
+        async query(sql: string) {
+          if (sql.includes('current_database()')) {
+            return [{ database_name: 'mutation_boundary_test', user_name: 'test_user' }];
+          }
+          return [{ id: 1, payload }];
+        },
+      },
+      tables, safety, action: async () => { executed = true; },
+    }), /unsupported snapshot object type/);
+    assert.equal(executed, false);
+  }
+});
+
+test('sparse arrays and accessors fail closed without executing the action', async () => {
+  const sparse = new Array(2); sparse[1] = 'visible';
+  const accessor = { get hidden() { throw new Error('getter must never run'); } };
+  for (const payload of [sparse, accessor]) {
+    let executed = false;
+    await assert.rejects(assertNoMutation({
+      db: {
+        async query(sql: string) {
+          if (sql.includes('current_database()')) {
+            return [{ database_name: 'mutation_boundary_test', user_name: 'test_user' }];
+          }
+          return [{ id: 1, payload }];
+        },
+      },
+      tables, safety, action: async () => { executed = true; },
+    }), /unsupported snapshot array|unsupported snapshot accessor/);
+    assert.equal(executed, false);
+  }
+});
