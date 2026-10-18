@@ -26,13 +26,13 @@ Do not ship until the following items are either verified with real PostgreSQL t
 
 **Exit:** green Linux CI plus disposable PostgreSQL integration coverage, clean install smoke, reviewed release tarball and zero known correctness regressions. No automatic publishing of an already released version.
 
-## v0.2.0 — narrowly scoped capabilities (P1)
+## v0.2.0 — implementation complete; release candidate pending final verification (P1)
 
-Only after v0.1.1 hardening and user evidence:
-- [ ] Explicit support for schema-qualified tables and composite row identifiers.
-- [ ] Parameterized opt-in row filters, validated without interpolating arbitrary SQL.
-- [ ] Optional include/exclude columns with clear treatment of volatile fields.
-- [ ] Bounds for memory, work and output; PostgreSQL-backed regression tests for each option.
+Implementation landed ahead of the pending v0.1.1 registry publication recovery. Do not tag or publish until the release gate passes:
+- [x] Explicit support for schema-qualified tables and composite row identifiers (PR #14).
+- [x] Parameterized opt-in row filters, validated without interpolating arbitrary SQL (PR #15).
+- [x] Optional include/exclude columns with clear treatment of volatile fields (PR #16).
+- [x] Per-value depth, size, collection and row-count safety bounds and PostgreSQL-backed option tests (PR #17); aggregate memory/time bounds remain **unsupported**, as documented.
 
 ## v0.3.0 — integration ergonomics (P1)
 

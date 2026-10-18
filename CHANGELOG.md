@@ -2,6 +2,20 @@
 
 All notable changes will be documented here.
 
+## 0.2.0 — release candidate (not yet published)
+
+- Add safely quoted schema-qualified PostgreSQL table names and composite row identifiers.
+- Add opt-in, parameterized single-column equality row filters, including NULL matching.
+- Add mutually exclusive include/exclude snapshot columns while retaining all key columns.
+- Add snapshot depth, scalar, collection and row-count limits; unsupported driver data fails closed.
+- Prevent snapshot false negatives from collisions between Date/text and binary/Base64 representations.
+- Harden handling of unsupported custom objects, sparse arrays and property accessors (pending audit PR #19).
+- Expand PostgreSQL and unit regression tests for new options and failure cases.
+
+**Compatibility:** v0.1.x `{ name, key }` table specifications remain accepted. New table options deliberately change comparison scope. The API remains experimental; this is not a production monitoring tool.
+
+**Release gate:** do not tag or publish 0.2.0 until the v0.1.1 npm authorization issue is resolved, PR #19 has green CI and is merged, the final source checks pass, and the npm package and GitHub release are verified separately.
+
 ## 0.1.1 — reliability and integration hardening
 
 - Fail closed on ambiguous, cyclic, or unsupported snapshot representations before invoking the test action.
