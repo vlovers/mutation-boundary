@@ -65,6 +65,10 @@ const stable = (value: unknown): string => {
         if (part.byteLength > 1024 * 1024) throw new Error('MutationBoundary: snapshot scalar size limit exceeded');
         return JSON.stringify(part.toString('base64'));
       }
+      if (part instanceof Uint8Array) {
+        if (part.byteLength > 1024 * 1024) throw new Error('MutationBoundary: snapshot scalar size limit exceeded');
+        return JSON.stringify(Buffer.from(part).toString('base64'));
+      }
       if (Array.isArray(part)) {
         if (part.length > 10000) throw new Error('MutationBoundary: snapshot collection size limit exceeded');
         return '[' + part.map(item => encode(item, depth + 1)).join(',') + ']';
