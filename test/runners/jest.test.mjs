@@ -1,5 +1,5 @@
 import { test, expect } from '@jest/globals';
-import { assertNoMutation, MutationBoundaryError } from '../../src/index.ts';
+import { assertNoMutation, MutationBoundaryError } from '../../dist/index.js';
 
 const safety = {
   expectedDatabase: 'mutation_boundary_test',
