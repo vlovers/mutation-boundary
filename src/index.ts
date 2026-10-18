@@ -144,7 +144,7 @@ async function takeBoundarySnapshot(
     );
     const rows = Array.isArray(result) ? result : result.rows;
     if (!Array.isArray(rows)) throw new Error('MutationBoundary: unsupported query result');
-    if (rows.length > maxRowsPerTable) throw new Error('MutationBoundary: snapshot row limit exceeded');
+    if (rows.length > maxRowsPerTable) throw new Error(`MutationBoundary: snapshot row limit exceeded for table ${table.name} (limit ${maxRowsPerTable})`);
     const values = new Map<string, Record<string, unknown>>();
     for (const row of rows) {
       // Validate the full driver value before invoking the action.
@@ -152,11 +152,16 @@ async function takeBoundarySnapshot(
       const comparisonRow = excluded
         ? Object.fromEntries(Object.entries(row).filter(([column]) => !excluded.includes(column)))
         : row;
-      stable(comparisonRow);
+      try {
+        stable(comparisonRow);
+      } catch (error) {
+        if (!(error instanceof Error) || !error.message.startsWith('MutationBoundary: ')) throw error;
+        throw new Error(error.message + ` in table ${table.name}`);
+      }
       const parts = columns.map(column => row[column]);
-      if (parts.some(part => part == null)) throw new Error('MutationBoundary: missing row key');
+      if (parts.some(part => part == null)) throw new Error(`MutationBoundary: missing row key in table ${table.name}`);
       const id = stable(parts);
-      if (values.has(id)) throw new Error('MutationBoundary: duplicate row key');
+      if (values.has(id)) throw new Error(`MutationBoundary: duplicate row key in table ${table.name}`);
       values.set(id, comparisonRow);
     }
     snapshot.set(table.name, values);
