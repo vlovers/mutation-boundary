@@ -242,7 +242,7 @@ test('column selection rejects unsafe, conflicting and key-excluding specificati
     let called = false;
     await assert.rejects(assertNoMutation({
       db: db([], []), tables: [table], safety, action: async () => { called = true; },
-    }), /column selection|key columns|unsafe SQL identifier/);
+    }), /column selection|key columns|unsafe SQL identifier|choose includeColumns or excludeColumns/);
     assert.equal(called, false);
   }
 });
