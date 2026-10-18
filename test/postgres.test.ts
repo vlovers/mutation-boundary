@@ -174,3 +174,37 @@ test('single-connection pg.Pool completes when action does not acquire the pool'
     await pool.end();
   }
 });
+
+test('schema-qualified tables and composite row keys detect surviving mutations', async () => {
+  const url = process.env.MUTATION_BOUNDARY_TEST_DATABASE_URL;
+  if (!url) throw new Error('Isolated test database URL required');
+  const db = new pg.Client({ connectionString: url });
+  await db.connect();
+  const safety = {
+    expectedDatabase: 'mutation_boundary_test',
+    expectedUser: 'mutation_boundary_ci',
+    confirmDisposableTestDatabase: true as const,
+  };
+  try {
+    await assertDisposableDatabase(db, safety);
+    await db.query('CREATE SCHEMA IF NOT EXISTS boundary_v02_test');
+    await db.query('CREATE TABLE boundary_v02_test.memberships (tenant_id integer NOT NULL, member_id integer NOT NULL, state text NOT NULL, PRIMARY KEY (tenant_id, member_id))');
+    await db.query("INSERT INTO boundary_v02_test.memberships VALUES (1, 1, 'active'), (2, 1, 'active')");
+    const tables = [{ name: 'boundary_v02_test.memberships', key: ['tenant_id', 'member_id'] }];
+    await assertNoMutation({ db, tables, safety, action: async () => {} });
+    await assert.rejects(assertNoMutation({ db, tables, safety, action: async () => {
+      await db.query("UPDATE boundary_v02_test.memberships SET state = 'blocked' WHERE tenant_id = 2 AND member_id = 1");
+    } }), (error: unknown) => {
+      assert.ok(error instanceof MutationBoundaryError);
+      assert.equal(error.counts[0]?.updated, 1);
+      return true;
+    });
+    await assert.rejects(assertNoMutation({
+      db, tables: [{ name: 'boundary_v02_test.memberships;DROP', key: ['tenant_id', 'member_id'] }],
+      safety, action: async () => { throw new Error('should not run'); },
+    }), /unsafe SQL identifier/);
+  } finally {
+    await db.query('DROP SCHEMA IF EXISTS boundary_v02_test CASCADE');
+    await db.end();
+  }
+});
