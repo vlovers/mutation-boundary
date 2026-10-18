@@ -2,7 +2,7 @@
 
 MutationBoundary is an **isolated PostgreSQL integration-test assertion**, not a production monitoring system. It compares the net state of explicitly selected tables around an awaited operation. Roadmap items are proposals, not compatibility or release promises.
 
-## Shipped — v0.1.0 (experimental)
+## Released — v0.1.0 (experimental)
 
 - Typed `assertNoMutation()` API with test-database identity and explicit disposal acknowledgement.
 - Table snapshots with bounded row count; net INSERT/UPDATE/DELETE reports without row values or keys.
@@ -11,9 +11,9 @@ MutationBoundary is an **isolated PostgreSQL integration-test assertion**, not a
 
 **Known scope:** No support for composite keys or schema-qualified names, transient writes, concurrent writers, external effects or production databases. A pool with only one connection may deadlock when the action uses the same pool.
 
-## Next — v0.1.1: correctness and packaging (P0)
+## Released — v0.1.1: correctness and packaging (P0)
 
-Do not ship until the following items are either verified with real PostgreSQL tests or explicitly documented as unsupported.
+Historical hardening checklist. Unchecked items remain verification or adoption follow-ups, not claims that the released package failed.
 
 - [ ] Verify npm registry tarball version, `dist` exports/types, pack allowlist and provenance against the tagged source. Exercise a clean external Node ESM consumer and document actual CommonJS/Bun behavior.
 - [ ] Test the snapshot serializer against PostgreSQL dates, buffers, bigint/numeric representations, JSONB nested values, nulls and tricky key encodings. Fail closed on unsupported/cyclic or ambiguous values rather than misreport equivalence.
@@ -26,9 +26,9 @@ Do not ship until the following items are either verified with real PostgreSQL t
 
 **Exit:** green Linux CI plus disposable PostgreSQL integration coverage, clean install smoke, reviewed release tarball and zero known correctness regressions. No automatic publishing of an already released version.
 
-## v0.2.0 — implementation complete; release candidate pending final verification (P1)
+## Released — v0.2.0: scoped snapshots (P1)
 
-Implementation landed ahead of the pending v0.1.1 registry publication recovery. Do not tag or publish until the release gate passes:
+Released on GitHub and published through npm Trusted Publishing. The following capabilities shipped:
 - [x] Explicit support for schema-qualified tables and composite row identifiers (PR #14).
 - [x] Parameterized opt-in row filters, validated without interpolating arbitrary SQL (PR #15).
 - [x] Optional include/exclude columns with clear treatment of volatile fields (PR #16).

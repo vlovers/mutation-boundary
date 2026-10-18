@@ -1,6 +1,6 @@
 # Contributing
 
-Issues and narrowly scoped pull requests are welcome. Please discuss new database adapters or broad API additions before implementation: v0.1 focuses on PostgreSQL net-state assertions.
+Issues and narrowly scoped pull requests are welcome. Please discuss new database adapters or broad API additions before implementation: v0.2 focuses on PostgreSQL net-state assertions with scoped table and column selection.
 
 ## Local checks
 

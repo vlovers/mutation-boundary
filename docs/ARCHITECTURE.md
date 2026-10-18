@@ -1,4 +1,4 @@
-# Architecture and v0.1 scope
+# Architecture and v0.2 scope
 
 MutationBoundary is a small, TypeORM-independent PostgreSQL test assertion library, not an ORM, migration tool or database auditor.
 
@@ -33,7 +33,7 @@ The current implementation is primarily in `src/index.ts` and `src/safety.ts`; t
 
 1. Never run actions if safety verification or baseline snapshot fails.
 2. No implicit `NODE_ENV` bypass. Exact database/user expectations plus an explicit test-only acknowledgement are required.
-3. Only simple SQL identifiers in v0.1. No arbitrary SQL expressions, schema-qualified names or composite keys.
+3. Supports safely quoted simple identifiers, optionally `schema.table`, and composite row keys. Rejects arbitrary SQL expressions and quoted/complex names; optional equality filters use bind parameters.
 4. Snapshot size cap must fail closed, not truncate silently.
 5. Compare net state only; avoid claiming transaction tracing, transient write detection, or full database coverage.
 6. Avoid raw row data in public errors, logs, serialization and normal return values. Audit low-level functions before exposing them in the release.

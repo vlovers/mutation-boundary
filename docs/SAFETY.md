@@ -1,4 +1,4 @@
-# MutationBoundary v0.1 safety notes (experimental)
+# MutationBoundary v0.2 safety notes (experimental)
 
 MutationBoundary is a PostgreSQL net-state assertion tool for **disposable, isolated test databases only**. It compares snapshots of selected tables before and after an action. It cannot detect writes that were reverted before the second snapshot, mutations in unselected tables, or changes outside PostgreSQL.
 
@@ -31,15 +31,15 @@ Raw snapshot and diff helpers are internal implementation details, not public pa
 
 - No guarantee of consistency under concurrent writes; use a quiescent isolated test DB.
 - Snapshot size is capped; exceeding the cap fails the assertion rather than passing.
-- Row keys must be unique, non-null, and SQL identifiers must be simple unqualified names.
+- Row keys must be unique and non-null. Simple identifier names support optionally schema-qualified tables (`schema.table`); arbitrary SQL identifiers and expressions are unsupported.
 - Action errors are rethrown if no mutation is detected. If mutations are detected, the mutation contract error takes precedence.
-- v0.1.0 has been released. For any subsequent version, verify PostgreSQL CI, package contents, connection safety and a clean external installation before publication.
-- In v0.1.1 development, unsupported driver values (undefined, non-finite numbers, bigint, functions and symbols) and cyclic structures fail closed rather than silently comparing ambiguous snapshots. This is not a guarantee that every custom driver representation is handled.
+- v0.2.0 has been released; continue verifying PostgreSQL CI, package contents, connection safety and clean external installation for subsequent releases.
+- Since v0.1.1, unsupported driver values (undefined, non-finite numbers, bigint, functions and symbols) and cyclic structures fail closed rather than silently comparing ambiguous snapshots. This is not a guarantee that every custom driver representation is handled.
 
-## v0.2 development: bounded snapshot representations
+## v0.2: bounded snapshot representations
 
-The experimental resource-bound branch rejects snapshot nesting deeper than 64 levels, individual text/binary scalars above 1 MiB, arrays/objects with more than 10,000 entries, and a requested row cap above 50,000. These limits may reject legitimate large test fixtures and are intentionally fail-closed before the action for initial snapshots. They are **not** a total memory or execution-time budget; a table with many large rows or a large number of selected tables can still use significant memory. Use small isolated fixtures and enforce CI process limits separately. No constraint guarantees stability for concurrent writes.
+v0.2.0 rejects snapshot nesting deeper than 64 levels, individual text/binary scalars above 1 MiB, arrays/objects with more than 10,000 entries, and a requested row cap above 50,000. These limits may reject legitimate large test fixtures and are intentionally fail-closed before the action for initial snapshots. They are **not** a total memory or execution-time budget; a table with many large rows or a large number of selected tables can still use significant memory. Use small isolated fixtures and enforce CI process limits separately. No constraint guarantees stability for concurrent writes.
 
-## v0.2 audit: snapshot value types
+## v0.2: snapshot value types
 
 Snapshot comparisons retain type distinctions between text, JavaScript dates, and binary values. A date with the same ISO text as a string and a byte buffer whose Base64 text matches a string must not compare equal. `Buffer` and `Uint8Array` containing the same bytes are treated as equivalent binary values. Custom driver value representations still require compatibility tests; do not assume every exotic class is supported.
