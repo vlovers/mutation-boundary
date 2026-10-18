@@ -125,7 +125,14 @@ test('unsupported Map Set and class values fail closed before running the action
   for (const payload of [new Map([['a', 1]]), new Set([1]), new CustomValue()]) {
     let executed = false;
     await assert.rejects(assertNoMutation({
-      db: fakeDb([{ id: 1, payload }], [{ id: 1, payload }]),
+      db: {
+        async query(sql: string) {
+          if (sql.includes('current_database()')) {
+            return [{ database_name: 'mutation_boundary_test', user_name: 'test_user' }];
+          }
+          return [{ id: 1, payload }];
+        },
+      },
       tables, safety, action: async () => { executed = true; },
     }), /unsupported snapshot object type/);
     assert.equal(executed, false);
