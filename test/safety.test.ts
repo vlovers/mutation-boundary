@@ -184,3 +184,48 @@ test('schema-qualified name rejects extra dot or unsafe component', async () => 
     assert.equal(executed, false);
   }
 });
+
+test('row filters reject injection in column names before action', async () => {
+  let called = false;
+  await assert.rejects(assertNoMutation({
+    db: db([], []),
+    tables: [{ name: 'tasks', key: 'id', where: { column: 'tenant_id; DROP TABLE tasks', equals: 'other' } }],
+    safety,
+    action: async () => { called = true; },
+  }), /unsafe SQL identifier/);
+  assert.equal(called, false);
+});
+
+test('row filter forwards user text only as a query parameter', async () => {
+  const injection = "' OR true --";
+  let seenSQL = '';
+  let seenValues: readonly unknown[] | undefined;
+  let executed = false;
+  const adapter = {
+    async query(sql: string, values?: readonly unknown[]) {
+      if (sql.includes('current_database()')) return [{ database_name: 'mutation_boundary_test', user_name: 'test_user' }];
+      seenSQL = sql; seenValues = values;
+      return [];
+    },
+  };
+  await assertNoMutation({
+    db: adapter, tables: [{ name: 'tasks', key: 'id', where: { column: 'tenant_id', equals: injection } }],
+    safety, action: async () => { executed = true; },
+  });
+  assert.equal(executed, true);
+  assert.doesNotMatch(seenSQL, /OR true/);
+  assert.match(seenSQL, /IS NOT DISTINCT FROM \\$1/);
+  assert.deepEqual(seenValues, [injection]);
+});
+
+test('row filters reject unsupported values before action', async () => {
+  for (const value of [Number.NaN, Infinity, undefined, { nested: 1 }]) {
+    let called = false;
+    await assert.rejects(assertNoMutation({
+      db: db([], []),
+      tables: [{ name: 'tasks', key: 'id', where: { column: 'tenant_id', equals: value as never } }],
+      safety, action: async () => { called = true; },
+    }), /invalid row filter/);
+    assert.equal(called, false);
+  }
+});
