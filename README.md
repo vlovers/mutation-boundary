@@ -92,6 +92,21 @@ tables: [
 
 **Development only:** not included in the published 0.1.x package. Use isolated disposable PostgreSQL test databases.
 
+## v0.2 development preview: column selection
+
+Opt in to compare selected columns or exclude expected volatile values:
+
+```ts
+tables: [
+  { name: 'public.tasks', key: 'id', excludeColumns: ['updated_at'] },
+  { name: 'public.estimates', key: ['tenant_id', 'id'], includeColumns: ['status'] },
+]
+```
+
+`includeColumns` selects the listed comparison columns **plus all row-key columns**. `excludeColumns` ignores named comparison columns but cannot exclude row keys. The two options are mutually exclusive. Unselected changes will not be detected; only use this when that behavior is intentional. The exclude path still fetches all table columns from PostgreSQL before dropping excluded fields in memory; do not use it to hide sensitive columns from the application process. Identifiers must be simple and safely quoted.
+
+**Development only:** these selectors are not in published 0.1.x.
+
 ## Safety first
 
 **Only use disposable, isolated, quiescent PostgreSQL test databases.** The explicit confirmation and database/user identity check help catch mistakes, but do **not** prove a database is disposable. Never reuse production credentials. See [Safety and limitations](docs/SAFETY.md).
