@@ -68,3 +68,39 @@ test('unsupported numeric and bigint driver values fail closed', async () => {
     assert.equal(called, false);
   }
 });
+
+test('snapshot rejects excessively deep values before action', async () => {
+  let nested: Row = { leaf: true };
+  for (let i = 0; i < 70; i++) nested = { nested };
+  let called = false;
+  await assert.rejects(assertNoMutation({
+    db: fakeDb([{ id: 1, nested }], [{ id: 1, nested }]),
+    tables, safety, action: async () => { called = true; },
+  }), /snapshot nesting limit exceeded/);
+  assert.equal(called, false);
+});
+
+test('snapshot rejects oversized text and binary scalars before action', async () => {
+  for (const payload of ['x'.repeat(1024 * 1024 + 1), Buffer.alloc(1024 * 1024 + 1)]) {
+    let called = false;
+    await assert.rejects(assertNoMutation({
+      db: fakeDb([{ id: 1, payload }], [{ id: 1, payload }]),
+      tables, safety, action: async () => { called = true; },
+    }), /snapshot scalar size limit exceeded/);
+    assert.equal(called, false);
+  }
+});
+
+test('snapshot rejects oversized arrays and extreme row caps before action', async () => {
+  let called = false;
+  await assert.rejects(assertNoMutation({
+    db: fakeDb([{ id: 1, payload: Array(10001).fill(1) }], [{ id: 1 }]),
+    tables, safety, action: async () => { called = true; },
+  }), /snapshot collection size limit exceeded/);
+  assert.equal(called, false);
+  await assert.rejects(assertNoMutation({
+    db: fakeDb([], []), tables, safety, maxRowsPerTable: 50001,
+    action: async () => { called = true; },
+  }), /invalid snapshot limit/);
+  assert.equal(called, false);
+});
