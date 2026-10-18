@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![npm version](https://img.shields.io/npm/v/mutation-boundary.svg)](https://www.npmjs.com/package/mutation-boundary)
 
-> **v0.1.0** · [npm package](https://www.npmjs.com/package/mutation-boundary). The API remains experimental; use only isolated disposable test databases.
+> **v0.2.0** · [npm package](https://www.npmjs.com/package/mutation-boundary). The API remains experimental; use only isolated disposable test databases.
 
 An HTTP endpoint returns 500, an authorization check rejects a request, or a background job fails. **Did any committed row changes survive?** MutationBoundary compares the net state of selected PostgreSQL tables before and after an awaited action and fails the test when unexpected INSERT, UPDATE or DELETE changes remain.
 
@@ -23,7 +23,7 @@ Use focused SQL assertions when only a few specific fields matter. MutationBound
 ## Installation
 
 ```sh
-npm install -D mutation-boundary
+npm install -D mutation-boundary@^0.2.0
 ```
 
 ## Example
@@ -64,9 +64,9 @@ Database mutation contract violated.
 
 The high-level mutation report contains counts and table names, **not row values or keys**.
 
-## v0.2 development preview: qualified tables and composite keys
+## Schema-qualified tables and composite keys (v0.2.0)
 
-The feature branch introduces explicit schema-qualified names and composite identifiers:
+Use schema-qualified names and composite identifiers:
 
 ```ts
 tables: [
@@ -76,9 +76,9 @@ tables: [
 
 The existing `{ name: 'tasks', key: 'id' }` API remains valid. Names must consist of one or two simple SQL identifiers separated by a dot; columns must be unique and non-empty. Quoted/complex PostgreSQL identifiers are not supported. Composite keys are required to uniquely identify each row, and the library still checks **net state** only.
 
-**Not part of published 0.1.1**; pending review and CI. Additional v0.2 milestones (row filters and column selection) will be separate changes.
+These capabilities are available in v0.2.0.
 
-## v0.2 development preview: parameterized row filters
+## Parameterized row filters (v0.2.0)
 
 Optionally scope snapshots to rows matching one column by exact equality:
 
@@ -90,9 +90,9 @@ tables: [
 
 `equals: null` matches SQL NULL using `IS NOT DISTINCT FROM`. Filter values are sent as PostgreSQL bind parameters, not interpolated into SQL. Column and table identifiers are validated separately. Only one equality condition per table is supported in this increment; arbitrary SQL fragments, operators, and OR predicates are not accepted. The same filter is applied before and after the action. A row changing into or out of scope appears as an insertion or deletion within that selected subset.
 
-**Development only:** not included in the published 0.1.x package. Use isolated disposable PostgreSQL test databases.
+Available in v0.2.0. Use isolated disposable PostgreSQL test databases.
 
-## v0.2 development preview: column selection
+## Column selection (v0.2.0)
 
 Opt in to compare selected columns or exclude expected volatile values:
 
@@ -105,7 +105,7 @@ tables: [
 
 `includeColumns` selects the listed comparison columns **plus all row-key columns**. `excludeColumns` ignores named comparison columns but cannot exclude row keys. The two options are mutually exclusive. Unselected changes will not be detected; only use this when that behavior is intentional. The exclude path still fetches all table columns from PostgreSQL before dropping excluded fields in memory; do not use it to hide sensitive columns from the application process. Identifiers must be simple and safely quoted.
 
-**Development only:** these selectors are not in published 0.1.x.
+Available in v0.2.0.
 
 ## Safety first
 
@@ -148,7 +148,7 @@ CI provisions its own PostgreSQL 16 service and executes both suites.
 
 ## Project status
 
-**v0.1.0** is the initial experimental release. Install it from [npm](https://www.npmjs.com/package/mutation-boundary). The API is not yet stable; use only isolated disposable PostgreSQL test databases.
+**v0.2.0** is published on [npm](https://www.npmjs.com/package/mutation-boundary) and [GitHub Releases](https://github.com/vlovers/mutation-boundary/releases/tag/v0.2.0). The API is not yet stable; use only isolated disposable PostgreSQL test databases.
 
 For release process and verification history see [Release notes and checklist](docs/RELEASING.md), [Architecture](docs/ARCHITECTURE.md), [Security policy](SECURITY.md), and [Contributing](CONTRIBUTING.md).
 
