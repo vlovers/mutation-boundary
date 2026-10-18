@@ -104,3 +104,18 @@ test('snapshot rejects oversized arrays and extreme row caps before action', asy
   }), /invalid snapshot limit/);
   assert.equal(called, false);
 });
+
+test('typed scalar transitions are not hidden by identical formatted text', async () => {
+  const iso = '2026-01-01T00:00:00.000Z';
+  await expectMutation([{ id: 1, value: new Date(iso) }], [{ id: 1, value: iso }], 'updated');
+  await expectMutation([{ id: 1, value: Buffer.from([0, 255]) }], [{ id: 1, value: 'AP8=' }], 'updated');
+  await expectMutation([{ id: 1, value: new Uint8Array([0, 255]) }], [{ id: 1, value: 'AP8=' }], 'updated');
+});
+
+test('typed Date and binary values with identical contents compare as unchanged', async () => {
+  await assertNoMutation({
+    db: fakeDb([{ id: 1, at: new Date('2026-01-01'), payload: Buffer.from([0, 255]) }],
+      [{ id: 1, at: new Date('2026-01-01'), payload: new Uint8Array([0, 255]) }]),
+    tables, safety, action: async () => {},
+  });
+});

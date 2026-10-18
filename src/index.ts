@@ -59,15 +59,15 @@ const stable = (value: unknown): string => {
     try {
       if (Object.prototype.toString.call(part) === '[object Date]') {
         const date = Date.prototype.toISOString.call(part);
-        return JSON.stringify(date);
+        return 'D' + JSON.stringify(date);
       }
       if (typeof Buffer !== 'undefined' && Buffer.isBuffer(part)) {
         if (part.byteLength > 1024 * 1024) throw new Error('MutationBoundary: snapshot scalar size limit exceeded');
-        return JSON.stringify(part.toString('base64'));
+        return 'B' + JSON.stringify(part.toString('base64'));
       }
       if (part instanceof Uint8Array) {
         if (part.byteLength > 1024 * 1024) throw new Error('MutationBoundary: snapshot scalar size limit exceeded');
-        return JSON.stringify(Buffer.from(part).toString('base64'));
+        return 'B' + JSON.stringify(Buffer.from(part).toString('base64'));
       }
       if (Array.isArray(part)) {
         if (part.length > 10000) throw new Error('MutationBoundary: snapshot collection size limit exceeded');
