@@ -39,3 +39,7 @@ Raw snapshot and diff helpers are internal implementation details, not public pa
 ## v0.2 development: bounded snapshot representations
 
 The experimental resource-bound branch rejects snapshot nesting deeper than 64 levels, individual text/binary scalars above 1 MiB, arrays/objects with more than 10,000 entries, and a requested row cap above 50,000. These limits may reject legitimate large test fixtures and are intentionally fail-closed before the action for initial snapshots. They are **not** a total memory or execution-time budget; a table with many large rows or a large number of selected tables can still use significant memory. Use small isolated fixtures and enforce CI process limits separately. No constraint guarantees stability for concurrent writes.
+
+## v0.2 audit: snapshot value types
+
+Snapshot comparisons retain type distinctions between text, JavaScript dates, and binary values. A date with the same ISO text as a string and a byte buffer whose Base64 text matches a string must not compare equal. `Buffer` and `Uint8Array` containing the same bytes are treated as equivalent binary values. Custom driver value representations still require compatibility tests; do not assume every exotic class is supported.
