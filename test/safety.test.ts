@@ -229,3 +229,20 @@ test('row filters reject unsupported values before action', async () => {
     assert.equal(called, false);
   }
 });
+
+test('column selection rejects unsafe, conflicting and key-excluding specifications', async () => {
+  const cases = [
+    { name: 'tasks', key: 'id', includeColumns: [] },
+    { name: 'tasks', key: 'id', includeColumns: ['status', 'status'] },
+    { name: 'tasks', key: 'id', excludeColumns: ['id'] },
+    { name: 'tasks', key: 'id', excludeColumns: ['status;DROP'] },
+    { name: 'tasks', key: 'id', includeColumns: ['status'], excludeColumns: ['timestamp'] },
+  ];
+  for (const table of cases) {
+    let called = false;
+    await assert.rejects(assertNoMutation({
+      db: db([], []), tables: [table], safety, action: async () => { called = true; },
+    }), /column selection|key columns|unsafe SQL identifier|choose includeColumns or excludeColumns/);
+    assert.equal(called, false);
+  }
+});

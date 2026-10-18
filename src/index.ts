@@ -16,7 +16,7 @@ type RowChange = {
   after?: Record<string, unknown>;
 };
 
-export type TableSpec = { name: string; key: string | readonly string[]; where?: { column: string; equals: string | number | boolean | null } };
+export type TableSpec = { name: string; key: string | readonly string[]; where?: { column: string; equals: string | number | boolean | null }; includeColumns?: readonly string[]; excludeColumns?: readonly string[] };
 type Snapshot = Map<string, Map<string, Record<string, unknown>>>;
 const identifier = (value: string) => {
   if (!/^[a-z_][a-z_0-9]*$/i.test(value)) {
@@ -92,9 +92,26 @@ async function takeBoundarySnapshot(
     if (filter && typeof filter.equals === 'number' && !Number.isFinite(filter.equals)) {
       throw new Error('MutationBoundary: invalid row filter');
     }
+    const included = table.includeColumns;
+    const excluded = table.excludeColumns;
+    if (included !== undefined && excluded !== undefined) {
+      throw new Error('MutationBoundary: choose includeColumns or excludeColumns');
+    }
+    const selected = included ?? excluded;
+    if (selected !== undefined && (!Array.isArray(selected) || selected.length === 0 ||
+        new Set(selected).size !== selected.length)) {
+      throw new Error('MutationBoundary: invalid column selection');
+    }
+    for (const column of selected ?? []) identifier(column);
+    if (excluded?.some(column => columns.includes(column))) {
+      throw new Error('MutationBoundary: cannot exclude key columns');
+    }
+    const projection = included
+      ? [...new Set([...columns, ...included])].map(identifier).join(', ')
+      : '*';
     const whereClause = filter ? ` WHERE ${identifier(filter.column)} IS NOT DISTINCT FROM $1` : '';
     const result = await db.query(
-      `SELECT * FROM ${name}${whereClause} ORDER BY ${order} LIMIT ${maxRowsPerTable + 1}`,
+      `SELECT ${projection} FROM ${name}${whereClause} ORDER BY ${order} LIMIT ${maxRowsPerTable + 1}`,
       filter ? [filter.equals] : undefined,
     );
     const rows = Array.isArray(result) ? result : result.rows;
@@ -104,12 +121,15 @@ async function takeBoundarySnapshot(
     for (const row of rows) {
       // Validate the full driver value before invoking the action.
       // Otherwise unsupported data could be discovered only after writes.
-      stable(row);
+      const comparisonRow = excluded
+        ? Object.fromEntries(Object.entries(row).filter(([column]) => !excluded.includes(column)))
+        : row;
+      stable(comparisonRow);
       const parts = columns.map(column => row[column]);
       if (parts.some(part => part == null)) throw new Error('MutationBoundary: missing row key');
       const id = stable(parts);
       if (values.has(id)) throw new Error('MutationBoundary: duplicate row key');
-      values.set(id, row);
+      values.set(id, comparisonRow);
     }
     snapshot.set(table.name, values);
   }
