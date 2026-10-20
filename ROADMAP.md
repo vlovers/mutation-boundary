@@ -43,16 +43,24 @@ The v0.3.0 GitHub release and successful publish workflow are recorded on 2026-1
 - [x] Jest/Vitest async compatibility verified; no wrappers needed.
 - [x] Document tested Node 24/PostgreSQL 16/ESM/Jest/Vitest combinations; CommonJS remains unverified.
 
-## v0.4.0 release candidate — diagnostics and hardening (P2)
+## Released — v0.4.0: diagnostics and hardening (P2)
 
 - [x] Run disposable-PostgreSQL transaction/lifecycle regressions (commits, savepoints, failures, exhaustion); PostgreSQL CI passed in PR #32.
-- [ ] Verify unit failure-path matrix for safety failures, baseline/after queries, callback exception precedence and connection release (passed and merged in PR #34).
+- [x] Verify unit failure-path matrix for safety failures, baseline/after queries, callback exception precedence and connection release (passed in PR #34).
 - [x] Reconcile README/release docs and pinned npm registry smoke with v0.3.0; CI registry consumer passed in PR #32.
-- [ ] Validate v0.4.0 diagnostics through a newly packed external consumer and review versioned release docs before publishing.
+- [x] Validate v0.4.0 diagnostics through a newly packed external consumer (PR #35) and complete release CI (#36).
 
 - [x] Structured machine-readable reports exposing selected table names and counts only (CI passed in PR #33).
 - [x] Deterministically ordered text, capped at 20 table summaries; full structured counts remain available (CI passed in PR #33).
-- [x] JSON error representation contains table metadata and counts only; caller/driver exceptions remain outside this guarantee (development branch).
+- [x] JSON error representation contains table metadata and counts only; caller/driver exceptions remain outside this guarantee (released in v0.4.0).
+
+## v0.5.0 — adoption evidence and targeted compatibility (proposed)
+
+- [ ] Run a frozen-lockfile external consumer against published v0.4.0 and capture reproducible ESM/TypeScript behavior.
+- [ ] Reproduce Estima's failed-request regression on a disposable, isolated PostgreSQL database; do not claim adoption until test evidence is available.
+- [ ] Review `pg.Pool` versus compatible query adapters for connection identity and cleanup with focused failing tests before changing detection logic.
+- [ ] Resolve actionable field reports and document the integration limitations without widening the public API.
+- [ ] Keep dependency-free runtime and safety guardrails; no speculative framework helpers.
 
 ## v1.0.0 — stable contract
 
