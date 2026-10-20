@@ -21,7 +21,8 @@
     "check:package": "npm pack --dry-run",
     "test:consumer": "node scripts/consumer-smoke.mjs",
     "check:release": "npm run typecheck && npm test && npm run build && npm run test:consumer",
-    "test:registry": "node scripts/registry-smoke.mjs"
+    "test:registry": "node scripts/registry-smoke.mjs",
+    "test:external:postgres": "node scripts/postgres-consumer-smoke.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
