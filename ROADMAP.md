@@ -60,7 +60,7 @@ The v0.3.0 GitHub release and successful publish workflow are recorded on 2026-1
 - [x] Verify a real Estima failed-manual-estimate HTTP regression with published v0.4.0 on disposable PostgreSQL (Estima PR #12, full CI green). **Issue #10 clarification atomicity remains unverified/unfixed by this test.** See [adoption evidence](docs/ESTIMA_ADOPTION.md).
 - [ ] Extend Estima's real HTTP mutation assertion to the clarification failure from issue #10 after the product transaction contract is fixed.
 - [ ] Review `pg.Pool` versus compatible query adapters for connection identity and cleanup with focused failing tests before changing detection logic.
-- [ ] Resolve actionable field reports and document the integration limitations without widening the public API.
+- [x] Document field-tested integration limitations, including Jest CommonJS native ESM import and Estima's verified Bun consumer (see [compatibility evidence](docs/COMPATIBILITY.md)); further field reports remain welcome.
 - [ ] Keep dependency-free runtime and safety guardrails; no speculative framework helpers.
 
 ## v1.0.0 — stable contract

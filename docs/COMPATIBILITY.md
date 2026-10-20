@@ -1,0 +1,29 @@
+# Tested integration matrix (v0.5 development)
+
+MutationBoundary is a PostgreSQL **net-state** assertion intended only for disposable,
+isolated, quiescent test databases. These are test observations, not universal
+compatibility promises.
+
+| Consumer / environment | Evidence | Limits |
+| --- | --- | --- |
+| Node.js 24 ESM, `pg.Client` and `pg.Pool`, PostgreSQL 16 | Library CI, integration tests and external packed-package consumer ([PR #40](https://github.com/vlovers/mutation-boundary/pull/40)) | `pg.Pool` snapshots pin one connection. Provide another connection for actions; `max: 1` can deadlock. |
+| Node.js 24, TypeORM DataSource, NestJS application context | Disposable PostgreSQL CI, `test/typeorm-nestjs.test.mjs` | This is a thin adapter, not a NestJS module or repository plugin. |
+| Real NestJS HTTP PATCH, TypeORM, PostgreSQL 16 | `test/nest-http.test.mjs`, [PR #41](https://github.com/vlovers/mutation-boundary/pull/41) | Representative failure injection. Not proof of every application endpoint or every transaction isolation level. |
+| Jest 30 and Vitest 3 using ESM consumers | CI runner suites | Existing test runners use ESM-compatible configuration. |
+| Estima Bun 1.3.2, Jest/ts-jest CommonJS test suite, NestJS HTTP, PostgreSQL 17 | [Estima PR #12](https://github.com/vlovers/estima/pull/12), [PostgreSQL CI](https://github.com/vlovers/estima/actions/runs/39513022289) and [Bun migration CI](https://github.com/vlovers/estima/actions/runs/39513022315) | Test-only dependency `mutation-boundary@0.4.0`. Estima uses a native dynamic ESM import because static import is transformed to CommonJS `require()` by its Jest setup. |
+| Published npm v0.4.0 and packed ESM / TS consumer | Registry consumer smoke in CI and [PR #35](https://github.com/vlovers/mutation-boundary/pull/35) | Passing registry installation does not establish byte-for-byte source-to-tarball identity. |
+
+## Unsupported or not proven
+
+- No production, shared-database, CDC, transaction tracing or comprehensive concurrency guarantees.
+- No claim that MutationBoundary fixes Estima [issue #10](https://github.com/vlovers/estima/issues/10) (the clarification path can still require an application-level atomicity fix).
+- No automatic Jest CommonJS `require()` interoperability guarantee. Use an ESM-compatible test environment or carefully verified native dynamic import where needed.
+- No generic NestJS/TypeORM wrappers or support guarantee for other framework/database versions.
+- Driver exceptions and callback errors can contain sensitive details; only library-generated mutation summaries are redacted.
+- Unsupported exotic driver representations are rejected rather than silently equated, but the tested value matrix is not exhaustive.
+
+## Release boundaries
+
+Changes after the published 0.4.0 tag are **unreleased**. Do not use v0.5.0
+installation instructions until an actual tagged release and npm publication
+have completed. For the release process, see [RELEASING](RELEASING.md).

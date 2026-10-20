@@ -107,7 +107,7 @@ tables: [
 
 Available in v0.2.0.
 
-For executable integration patterns and connection-lifecycle caveats, see [pg.Client and pg.Pool recipes](docs/PG_RECIPES.md).
+For executable integration patterns and connection-lifecycle caveats, see [pg.Client and pg.Pool recipes](docs/PG_RECIPES.md) and the [tested compatibility matrix](docs/COMPATIBILITY.md).
 
 ## Machine-readable diagnostics (v0.4.0)
 

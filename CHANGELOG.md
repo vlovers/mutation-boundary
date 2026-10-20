@@ -1,13 +1,23 @@
 # Changelog
 
-## 0.4.0 — diagnostics and reliability (release candidate, not published)
+## Unreleased — v0.5.0 (adoption verification, not published)
+
+- Verify published v0.4.0 through an independently installed packed-tarball ESM consumer using real disposable PostgreSQL (PR #40).
+- Add real NestJS HTTP + TypeORM regressions for a failed operation that leaves a write versus one rolled back (PR #41).
+- Confirm package adoption in the Estima HTTP integration suite using Bun and Jest/ts-jest; native dynamic import is needed for the ESM package in Estima's CommonJS Jest tests (Estima PR #12).
+- Document scope, remaining clarification atomicity issue #10, and supported consumer configurations.
+
+**Compatibility:** No MutationBoundary public runtime API changes in this section. No v0.5.0 release has been made.
+
+
+## 0.4.0 — diagnostics and reliability (published 2026-10-21)
 
 - Preserve `MutationBoundaryError.counts` and add JSON-safe `toJSON()` / typed `MutationBoundaryReport` for CI diagnostics.
 - Sort human-readable table diagnostics deterministically and cap display at 20 tables; full aggregate counts remain available.
 - Add disposable PostgreSQL transaction, savepoint, pooling, failure-path and cleanup regressions.
 - Validate the new diagnostics contract in a clean external ESM and TypeScript tarball consumer.
 
-**Status:** Changes on main are not an npm release. Do not tag/publish until CI, package artifact, compatibility, and release workflow are reviewed.
+**Release:** [GitHub v0.4.0](https://github.com/vlovers/mutation-boundary/releases/tag/v0.4.0). The tagged publish workflow succeeded, including npm Trusted Publishing with provenance. The subsequently verified registry consumer installs `mutation-boundary@0.4.0` in CI.
 
 
 ## 0.3.0 — integration ergonomics
