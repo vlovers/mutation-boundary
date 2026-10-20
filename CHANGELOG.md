@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — v0.4.0 candidate (not published)
+## 0.4.0 — diagnostics and reliability (release candidate, not published)
 
 - Preserve `MutationBoundaryError.counts` and add JSON-safe `toJSON()` / typed `MutationBoundaryReport` for CI diagnostics.
 - Sort human-readable table diagnostics deterministically and cap display at 20 tables; full aggregate counts remain available.
