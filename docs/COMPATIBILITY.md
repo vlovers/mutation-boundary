@@ -30,11 +30,7 @@ Do **not** assume both exceptions will be returned, or that the earlier exceptio
 available through `cause`. A release failure can indicate a damaged connection or
 an invalid custom adapter, so silently suppressing it would also be dangerous.
 
-**Compatibility decision pending:** Changing the thrown error to `AggregateError`,
-attaching `cause`, or prioritizing the action error would alter observable behavior
-for consumers. A future fix should use executable consumer regression tests first
-and explicitly specify precedence when both mutation detection and cleanup fail.
-No v0.6 runtime API change is implied by this note.
+**Proposed v0.6 change (unreleased):** Preserve the exact thrown cleanup error and its precedence, but attach the prior verification failure as a non-enumerable `cause` only when the cleanup error is an `Error` without its own cause. This retains `instanceof`/identity while improving diagnostics. Existing cleanup causes remain untouched. This is a narrowly scoped behavior addition, not a new public method. Logging exception chains may expose caller-owned details; do not publish unsanitized traces.
 
 ## Unsupported or not proven
 
