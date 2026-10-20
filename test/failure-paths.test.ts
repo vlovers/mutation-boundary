@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { assertNoMutation, MutationBoundaryError } from '../src/index.ts';
+import { assertNoMutation, MutationBoundaryError, type TableSpec } from '../src/index.ts';
 
 const safety = {
   expectedDatabase: 'mutation_boundary_test',
@@ -311,7 +311,7 @@ test('release failure preserves a pre-existing cause', async () => {
 
 
 test('invalid snapshot configuration fails before action and releases a pooled client', async () => {
-  const cases: { name: string; selected: typeof tables; maxRowsPerTable?: number; message: RegExp }[] = [
+  const cases: { name: string; selected: readonly TableSpec[]; maxRowsPerTable?: number; message: RegExp }[] = [
     { name: 'duplicate table', selected: [...tables, ...tables], message: /duplicate table selection/ },
     { name: 'unsafe table name', selected: [{ name: 'tasks;drop', key: 'id' }], message: /unsafe SQL identifier/ },
     { name: 'empty composite key', selected: [{ name: 'tasks', key: [] }], message: /invalid row key/ },
