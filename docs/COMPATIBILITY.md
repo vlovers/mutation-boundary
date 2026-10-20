@@ -19,6 +19,23 @@ The current implementation treats an object with only `connect()` as a pool and 
 
 This is a documented limitation, not a new public API or promise of compatibility with arbitrary custom pool shims.
 
+
+## Cleanup error precedence (v0.6 evaluation)
+
+`assertNoMutation()` currently runs `release()` in a `finally` block for a checked-out pool client.
+If `release()` itself throws, its error replaces a prior action or snapshot error.
+This is now characterized by [PR #50](https://github.com/vlovers/mutation-boundary/pull/50).
+
+Do **not** assume both exceptions will be returned, or that the earlier exception is
+available through `cause`. A release failure can indicate a damaged connection or
+an invalid custom adapter, so silently suppressing it would also be dangerous.
+
+**Compatibility decision pending:** Changing the thrown error to `AggregateError`,
+attaching `cause`, or prioritizing the action error would alter observable behavior
+for consumers. A future fix should use executable consumer regression tests first
+and explicitly specify precedence when both mutation detection and cleanup fail.
+No v0.6 runtime API change is implied by this note.
+
 ## Unsupported or not proven
 
 - No production, shared-database, CDC, transaction tracing or comprehensive concurrency guarantees.
