@@ -45,7 +45,8 @@ The v0.3.0 GitHub release and successful publish workflow are recorded on 2026-1
 
 ## v0.4.0 — diagnostics and hardening (P2)
 
-- [ ] Run disposable-PostgreSQL transaction/lifecycle regressions (commits, savepoints, failures, exhaustion) and investigate only reproducible defects.
+- [x] Run disposable-PostgreSQL transaction/lifecycle regressions (commits, savepoints, failures, exhaustion); PostgreSQL CI passed in PR #32.
+- [ ] Verify unit failure-path matrix for safety failures, baseline/after queries, callback exception precedence and connection release (PR under review).
 - [ ] Reconcile README/release docs and pinned npm registry smoke with actual v0.3.0 artifact.
 
 - [x] Structured machine-readable reports exposing selected table names and counts only (development branch; requires CI verification).
