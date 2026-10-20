@@ -276,7 +276,25 @@ export async function assertNoMutation(options: AssertNoMutationOptions): Promis
     const changes = diffBoundarySnapshots(before, after);
     if (changes.length) throw new MutationBoundaryError(changes, tables);
     if (actionFailed) throw actionError;
-  } finally {
-    if (pool) (client as BoundaryDatabase & { release(): void }).release();
+  } catch (primaryError) {
+    // Preserve the thrown cleanup error and its identity for existing consumers,
+    // but retain the original verification failure when release itself throws.
+    if (pool) {
+      try {
+        (client as BoundaryDatabase & { release(): void }).release();
+      } catch (releaseError) {
+        if (releaseError instanceof Error && !('cause' in releaseError)) {
+          Object.defineProperty(releaseError, 'cause', {
+            value: primaryError,
+            configurable: true,
+            writable: true,
+            enumerable: false,
+          });
+        }
+        throw releaseError;
+      }
+    }
+    throw primaryError;
   }
+  if (pool) (client as BoundaryDatabase & { release(): void }).release();
 }
