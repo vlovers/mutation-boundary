@@ -127,3 +127,45 @@ test('empty table selections reject before executing action and release connecti
   assert.equal(called, false);
   assert.equal(f.stats().releases, 1);
 });
+
+
+test('pool-style adapter exposing only connect pins exactly one client', async () => {
+  const fixturePool = fixture({ baseline: [{ id: 1 }], after: [{ id: 1 }] });
+  await assertNoMutation({ db: fixturePool.pool, tables, safety, action: async () => {} });
+  assert.deepEqual(fixturePool.stats(), { queryReads: 2, releases: 1, connects: 1 });
+});
+
+test('query-first adapter with connect method but no pool metrics uses its query interface', async () => {
+  let queried = 0;
+  let connected = 0;
+  const adapter = {
+    async query(sql: string): Promise<Row[]> {
+      queried++;
+      if (sql.includes('current_database()')) {
+        return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      }
+      return [{ id: 1, state: 'unchanged' }];
+    },
+    async connect(): Promise<never> {
+      connected++;
+      throw new Error('connect is not a pool checkout');
+    },
+  };
+  await assertNoMutation({ db: adapter, tables, safety, action: async () => {} });
+  assert.equal(queried, 3);
+  assert.equal(connected, 0);
+});
+
+test('pg-like adapter with query, connect and numeric pool metrics pins and releases', async () => {
+  const f = fixture({ baseline: [{ id: 1 }], after: [{ id: 1 }] });
+  let directQueries = 0;
+  const adapter = {
+    async query(): Promise<Row[]> { directQueries++; throw new Error('must not query pool directly'); },
+    async connect() { return f.pool.connect(); },
+    totalCount: 1,
+    idleCount: 1,
+  };
+  await assertNoMutation({ db: adapter, tables, safety, action: async () => {} });
+  assert.equal(directQueries, 0);
+  assert.deepEqual(f.stats(), { queryReads: 2, releases: 1, connects: 1 });
+});
