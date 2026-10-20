@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![npm version](https://img.shields.io/npm/v/mutation-boundary.svg)](https://www.npmjs.com/package/mutation-boundary)
 
-> **v0.3.0 release candidate** · [npm package](https://www.npmjs.com/package/mutation-boundary). The API remains experimental; use only isolated disposable test databases.
+> **v0.3.0 published release** · [npm package](https://www.npmjs.com/package/mutation-boundary). The API remains experimental; use only isolated disposable test databases.
 
 An HTTP endpoint returns 500, an authorization check rejects a request, or a background job fails. **Did any committed row changes survive?** MutationBoundary compares the net state of selected PostgreSQL tables before and after an awaited action and fails the test when unexpected INSERT, UPDATE or DELETE changes remain.
 
@@ -23,7 +23,7 @@ Use focused SQL assertions when only a few specific fields matter. MutationBound
 ## Installation
 
 ```sh
-npm install -D mutation-boundary@^0.2.0
+npm install -D mutation-boundary@^0.3.0
 ```
 
 ## Example
@@ -150,11 +150,11 @@ CI provisions its own PostgreSQL 16 service and executes both suites.
 
 ## Integration compatibility (v0.3.0)
 
-The upcoming v0.3.0 release adds tested Node 24 + PostgreSQL 16 integration consumers for TypeORM DataSource, NestJS application context, Jest and Vitest. See [integration evidence and limitations](docs/V030_INTEGRATIONS.md). Published installations remain on v0.2.0 until the new version is verified on npm.
+The published v0.3.0 release includes tested Node 24 + PostgreSQL 16 integration consumers for TypeORM DataSource, NestJS application context, Jest and Vitest. See [integration evidence and limitations](docs/V030_INTEGRATIONS.md). The evidence is limited to the explicitly exercised configurations, not arbitrary framework adapters.
 
 ## Project status
 
-**v0.2.0** is published on [npm](https://www.npmjs.com/package/mutation-boundary) and [GitHub Releases](https://github.com/vlovers/mutation-boundary/releases/tag/v0.2.0). The API is not yet stable; use only isolated disposable PostgreSQL test databases.
+**v0.3.0** has a successful GitHub tag publishing workflow and is listed in [GitHub Releases](https://github.com/vlovers/mutation-boundary/releases/tag/v0.3.0). Confirm npm registry artifact availability with the pinned external consumer smoke before relying on it. **v0.2.0** was previously published on [npm](https://www.npmjs.com/package/mutation-boundary) and [GitHub Releases](https://github.com/vlovers/mutation-boundary/releases/tag/v0.2.0). The API is not yet stable; use only isolated disposable PostgreSQL test databases.
 
 For release process and verification history see [v0.2.0 release notes](docs/RELEASE_NOTES_v0.2.0.md) and [Release checklist](docs/RELEASING.md), [Architecture](docs/ARCHITECTURE.md), [Security policy](SECURITY.md), and [Contributing](CONTRIBUTING.md).
 
