@@ -206,3 +206,52 @@ test('a failed post-action snapshot propagates its driver error and releases onc
   }), received => received === error);
   assert.deepEqual(f.stats(), { queryReads: 2, releases: 1, connects: 1 });
 });
+
+
+test('release failure is observable when verification otherwise succeeds', async () => {
+  const releaseError = new Error('injected client release failure');
+  let releases = 0;
+  let reads = 0;
+  const db = {
+    async connect() {
+      return {
+        async query(sql: string): Promise<Row[]> {
+          if (sql.includes('current_database()')) {
+            return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+          }
+          reads++;
+          return [{ id: 1, state: 'unchanged' }];
+        },
+        release() { releases++; throw releaseError; },
+      };
+    },
+  };
+  await assert.rejects(assertNoMutation({
+    db, tables, safety, action: async () => {},
+  }), received => received === releaseError);
+  assert.equal(reads, 2);
+  assert.equal(releases, 1);
+});
+
+test('release failure currently takes precedence over earlier action failure', async () => {
+  const releaseError = new Error('release failed');
+  const actionError = new Error('operation failed');
+  let releases = 0;
+  const db = {
+    async connect() {
+      return {
+        async query(sql: string): Promise<Row[]> {
+          if (sql.includes('current_database()')) {
+            return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+          }
+          return [{ id: 1 }];
+        },
+        release() { releases++; throw releaseError; },
+      };
+    },
+  };
+  await assert.rejects(assertNoMutation({
+    db, tables, safety, action: async () => { throw actionError; },
+  }), received => received === releaseError);
+  assert.equal(releases, 1);
+});
