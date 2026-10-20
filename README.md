@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![npm version](https://img.shields.io/npm/v/mutation-boundary.svg)](https://www.npmjs.com/package/mutation-boundary)
 
-> **Latest published version: v0.4.0.** v0.5.0 is a release candidate until its tag is published to npm. The API remains experimental; use only isolated disposable test databases.
+> **Latest published version: v0.5.0.** [GitHub release](https://github.com/vlovers/mutation-boundary/releases/tag/v0.5.0) · [npm package](https://www.npmjs.com/package/mutation-boundary/v/0.5.0). The API remains experimental; use only isolated disposable test databases.
 
 An HTTP endpoint returns 500, an authorization check rejects a request, or a background job fails. **Did any committed row changes survive?** MutationBoundary compares the net state of selected PostgreSQL tables before and after an awaited action and fails the test when unexpected INSERT, UPDATE or DELETE changes remain.
 
@@ -23,7 +23,7 @@ Use focused SQL assertions when only a few specific fields matter. MutationBound
 ## Installation
 
 ```sh
-npm install -D mutation-boundary@^0.4.0
+npm install -D mutation-boundary@^0.5.0
 ```
 
 ## Example

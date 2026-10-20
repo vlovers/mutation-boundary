@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.0 — adoption verification (release candidate, not published)
+## 0.5.0 — adoption verification (published 2026-10-21)
 
 - Verify published v0.4.0 through an independently installed packed-tarball ESM consumer using real disposable PostgreSQL (PR #40).
 - Add real NestJS HTTP + TypeORM regressions for a failed operation that leaves a write versus one rolled back (PR #41).
@@ -8,7 +8,7 @@
 - Add adapter-shape unit regressions for pg.Pool and compatible query interfaces (PR #45).
 - Document scope, remaining clarification atomicity issue #10, and supported consumer configurations.
 
-**Compatibility:** No MutationBoundary public runtime API changes in this section. Tag and publish only after complete release-candidate CI and npm artifact review.
+**Compatibility:** No MutationBoundary public runtime API changes in this section. [GitHub release](https://github.com/vlovers/mutation-boundary/releases/tag/v0.5.0); tagged npm Trusted Publishing and release CI completed successfully.
 
 
 ## 0.4.0 — diagnostics and reliability (published 2026-10-21)
