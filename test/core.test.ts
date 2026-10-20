@@ -264,7 +264,7 @@ test('human diagnostic text is capped without losing structured counts', async (
     assert.equal(error.toJSON().counts.length, 30);
     assert.match(error.message, /and 10 more selected tables/);
     assert.doesNotMatch(error.message, /table_29:|secret-row/);
-    assert.equal((error.message.match(/table_\\d{2}:/g) ?? []).length, 20);
+    assert.equal((error.message.match(/table_\d{2}:/g) ?? []).length, 20);
     return true;
   });
 });
