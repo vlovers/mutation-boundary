@@ -16,7 +16,7 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node --experimental-strip-types --test test/core.test.ts test/safety.test.ts",
-    "test:postgres": "node --experimental-strip-types --test test/postgres.test.ts",
+    "test:postgres": "node --experimental-strip-types --test test/postgres.test.ts test/lifecycle-transactions.test.ts",
     "prepack": "npm run build",
     "check:package": "npm pack --dry-run",
     "test:consumer": "node scripts/consumer-smoke.mjs",

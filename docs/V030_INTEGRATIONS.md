@@ -1,6 +1,6 @@
-# v0.3.0 development: integration support and release gates
+# v0.3.0 released: integration evidence and limitations
 
-This document describes **source-branch verification**, not a published v0.3.0 release. The published package remains v0.2.0. Consumer PRs are independent and have **not** been merged into `main`.
+The v0.3.0 GitHub release was published on 2026-10-18 and its tag CI and npm publish workflow completed successfully. The original PR evidence below describes the configurations exercised before release, not broad framework compatibility. External npm artifact verification is a separate gate.
 
 ## Evidence and supported claims
 
@@ -24,14 +24,14 @@ This document describes **source-branch verification**, not a published v0.3.0 r
 - Row values are held in memory for comparisons; library-generated mutation summaries contain only table names and counts, but database-driver and application errors may leak caller-specific information.
 - The implementation detects surviving **net** changes to explicitly selected table rows, not transient or restored changes, changes outside selected tables, sequences, or external effects.
 
-## v0.3.0 integration gates
+## Historical v0.3.0 integration gates
 
 1. PR #23: release documentation and npm 0.2.0 registry smoke.
 2. PR #24: `pg.Client` / `pg.Pool` recipes and pool-contention regression.
 3. PR #25: real TypeORM and NestJS application-context consumer tests.
 4. PR #26: Jest/Vitest ESM consumer checks passed on the final tested commit; scope is restricted to the exercised async assertions.
 5. PR #27: sanitized table-scoped diagnostics and fail-closed unit regressions.
-6. Merge-free combined-branch verification after PR review, including unit, real PostgreSQL integration, external consumer smoke, `npm pack --dry-run`, and lockfile hygiene.
-7. Human approval is required before any merge, version bump, tag, npm publish or GitHub release.
+6. Combined-branch verification completed during release preparation, including unit, real PostgreSQL integration, source consumer smoke, `npm pack --dry-run`, and lockfile hygiene.
+7. The GitHub v0.3.0 release and successful tag publish workflow are recorded. Future releases still require human review.
 
-The individual PR CI jobs verify their own changes. **Independent green PRs do not prove their combined behavior**. No release-readiness claim should be made until the integration gate is complete.
+The individual PR CI jobs verified their own changes; the later combined release checks ran against the integrated tree. Green CI does not prove database isolation, support for untested versions, or artifact provenance.

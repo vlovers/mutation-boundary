@@ -34,16 +34,19 @@ Released on GitHub and published through npm Trusted Publishing. The following c
 - [x] Optional include/exclude columns with clear treatment of volatile fields (PR #16).
 - [x] Per-value depth, size, collection and row-count safety bounds and PostgreSQL-backed option tests (PR #17); aggregate memory/time bounds remain **unsupported**, as documented.
 
-## v0.3.0 — integration ergonomics (P1)
+## Released — v0.3.0: integration ergonomics (P1)
 
-Implementation evidence, specific supported scenarios and remaining release gates are tracked in [v0.3.0 integrations](docs/V030_INTEGRATIONS.md). Independent PR work is ongoing; v0.3.0 is not yet published.
+The v0.3.0 GitHub release and successful publish workflow are recorded on 2026-10-18. Consult [v0.3.0 integrations](docs/V030_INTEGRATIONS.md) for exactly tested scenarios. npm artifact verification remains a separate external-consumer check.
 
-- [ ] Verified minimal `pg.Client` and `pg.Pool` recipes, including connection-pool sizing.
-- [ ] Runnable NestJS/TypeORM example based on a disposable database.
-- [ ] Jest/Vitest helpers only if they remove real repeated setup; avoid unnecessary framework coupling.
-- [ ] Document supported Node, PostgreSQL, ESM/CJS and test-runner combinations based on CI.
+- [x] Verified minimal `pg.Client` and `pg.Pool` recipes, including connection-pool sizing.
+- [x] Runnable NestJS/TypeORM example based on a disposable database.
+- [x] Jest/Vitest async compatibility verified; no wrappers needed.
+- [x] Document tested Node 24/PostgreSQL 16/ESM/Jest/Vitest combinations; CommonJS remains unverified.
 
-## v0.4.0 — diagnostics (P2)
+## v0.4.0 — diagnostics and hardening (P2)
+
+- [ ] Run disposable-PostgreSQL transaction/lifecycle regressions (commits, savepoints, failures, exhaustion) and investigate only reproducible defects.
+- [ ] Reconcile README/release docs and pinned npm registry smoke with actual v0.3.0 artifact.
 
 - [ ] Structured machine-readable reports that expose counts and metadata only.
 - [ ] Deterministic ordering and bounded CI-friendly failures.
