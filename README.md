@@ -6,11 +6,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![npm version](https://img.shields.io/npm/v/mutation-boundary.svg)](https://www.npmjs.com/package/mutation-boundary)
 
-> **v0.4.0 published release** · [npm package](https://www.npmjs.com/package/mutation-boundary). The API remains experimental; use only isolated disposable test databases.
+> **Latest published version: v0.4.0.** v0.5.0 is a release candidate until its tag is published to npm. The API remains experimental; use only isolated disposable test databases.
 
 An HTTP endpoint returns 500, an authorization check rejects a request, or a background job fails. **Did any committed row changes survive?** MutationBoundary compares the net state of selected PostgreSQL tables before and after an awaited action and fails the test when unexpected INSERT, UPDATE or DELETE changes remain.
 
-The initial real-world evaluation is [Estima issue #10](https://github.com/vlovers/estima/issues/10) and [draft PR #11](https://github.com/vlovers/estima/pull/11).
+A verified real-world consumer is [Estima PR #12](https://github.com/vlovers/estima/pull/12), which uses published v0.4.0 in an HTTP/PostgreSQL test. The separate [clarification atomicity issue #10](https://github.com/vlovers/estima/issues/10) remains unresolved.
 
 See [the real-world failed-request regression walkthrough](docs/EXAMPLE.md) for a before/after test pattern and redacted failure output.
 
