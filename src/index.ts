@@ -200,21 +200,56 @@ export type AssertNoMutationOptions = {
   maxRowsPerTable?: number;
 };
 
+/** Structured metadata only: row keys and row values never leave the internal snapshot. */
+export type MutationBoundaryReport = Readonly<{
+  name: 'MutationBoundaryError';
+  counts: ReadonlyArray<Readonly<{ table: string; inserted: number; updated: number; deleted: number }>>;
+}>;
+
+const MAX_DIAGNOSTIC_TABLES = 20;
+
 export class MutationBoundaryError extends Error {
-  readonly counts: ReadonlyArray<Readonly<{ table: string; inserted: number; updated: number; deleted: number }>>;
+  readonly counts: MutationBoundaryReport['counts'];
   constructor(changes: readonly RowChange[], tables: readonly TableSpec[]) {
+    // Keep historical counts order for callers; use an independent, stable display order.
+    const totals = new Map<string, { inserted: number; updated: number; deleted: number }>();
+    for (const change of changes) {
+      let count = totals.get(change.table);
+      if (!count) {
+        count = { inserted: 0, updated: 0, deleted: 0 };
+        totals.set(change.table, count);
+      }
+      count[change.kind]++;
+    }
     const counts = tables.map(({ name }) => ({
       table: name,
-      inserted: changes.filter(c => c.table === name && c.kind === 'inserted').length,
-      updated: changes.filter(c => c.table === name && c.kind === 'updated').length,
-      deleted: changes.filter(c => c.table === name && c.kind === 'deleted').length,
+      inserted: totals.get(name)?.inserted ?? 0,
+      updated: totals.get(name)?.updated ?? 0,
+      deleted: totals.get(name)?.deleted ?? 0,
     }));
-    super('Unexpected mutations after operation\n\n' + counts.map(c =>
+    const sorted = [...counts].sort((a, b) => a.table < b.table ? -1 : a.table > b.table ? 1 : 0);
+    const shown = sorted.slice(0, MAX_DIAGNOSTIC_TABLES);
+    const lines = shown.map(c =>
       c.table + ': ' + (c.inserted + c.updated + c.deleted === 0 ? 'no changes' :
-        [c.inserted && c.inserted + ' inserted', c.updated && c.updated + ' updated', c.deleted && c.deleted + ' deleted'].filter(Boolean).join(', '))
-    ).join('\n') + '\n\nDatabase mutation contract violated.');
+        [c.inserted && c.inserted + ' inserted', c.updated && c.updated + ' updated',
+          c.deleted && c.deleted + ' deleted'].filter(Boolean).join(', '))
+    );
+    if (sorted.length > MAX_DIAGNOSTIC_TABLES) {
+      lines.push('... and ' + (sorted.length - MAX_DIAGNOSTIC_TABLES) + ' more selected tables');
+    }
+    super('Unexpected mutations after operation\n\n' + lines.join('\n') +
+      '\n\nDatabase mutation contract violated.');
     this.name = 'MutationBoundaryError';
     this.counts = counts;
+  }
+
+  /** Safe machine-readable summary for CI reporters. No row data or keys. */
+  toJSON(): MutationBoundaryReport {
+    return {
+      name: 'MutationBoundaryError',
+      counts: this.counts.map(c => ({ table: c.table, inserted: c.inserted,
+        updated: c.updated, deleted: c.deleted })),
+    };
   }
 }
 
