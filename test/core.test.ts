@@ -200,3 +200,71 @@ test('unsupported snapshot values report a table but never disclose contents', a
   });
   assert.equal(actionCalled, false);
 });
+
+test('machine-readable error reports contain only aggregate counts', async () => {
+  const secret = 'sensitive-row-value-not-for-logs';
+  await assert.rejects(assertNoMutation({
+    db: fakeDb([{ id: 42, password: secret }], [{ id: 42, password: 'new-private-data' }]),
+    tables, safety, action: async () => {},
+  }), (error: unknown) => {
+    assert.ok(error instanceof MutationBoundaryError);
+    assert.deepEqual(error.toJSON(), {
+      name: 'MutationBoundaryError',
+      counts: [{ table: 'tasks', inserted: 0, updated: 1, deleted: 0 }],
+    });
+    assert.equal(error.counts[0]?.updated, 1, 'existing counts property is preserved');
+    const json = JSON.stringify(error);
+    assert.doesNotMatch(json, /sensitive-row|new-private|password|42/);
+    assert.doesNotMatch(error.message, /sensitive-row|new-private|password|42/);
+    return true;
+  });
+});
+
+test('diagnostics are alphabetically deterministic while counts retain caller selection order', async () => {
+  const selected = [
+    { name: 'zebra', key: 'id' },
+    { name: 'alpha', key: 'id' },
+  ];
+  const makeDb = () => {
+    let index = 0;
+    return {
+      async query(sql: string) {
+        if (sql.includes('current_database()')) return [{ database_name: 'mutation_boundary_test', user_name: 'test_user' }];
+        // before snapshots of both tables, then after snapshots of both tables
+        return index++ < 2 ? [] : [{ id: 1 }];
+      },
+    };
+  };
+  await assert.rejects(assertNoMutation({
+    db: makeDb(), tables: selected, safety, action: async () => {},
+  }), (error: unknown) => {
+    assert.ok(error instanceof MutationBoundaryError);
+    assert.deepEqual(error.counts.map(c => c.table), ['zebra', 'alpha']);
+    assert.ok(error.message.indexOf('alpha:') < error.message.indexOf('zebra:'));
+    return true;
+  });
+});
+
+test('human diagnostic text is capped without losing structured counts', async () => {
+  const selected = Array.from({ length: 30 }, (_, i) => ({
+    name: 'table_' + String(i).padStart(2, '0'), key: 'id',
+  }));
+  let index = 0;
+  const db = {
+    async query(sql: string) {
+      if (sql.includes('current_database()')) return [{ database_name: 'mutation_boundary_test', user_name: 'test_user' }];
+      return index++ < selected.length ? [] : [{ id: 1, privateValue: 'secret-row' }];
+    },
+  };
+  await assert.rejects(assertNoMutation({
+    db, tables: selected, safety, action: async () => {},
+  }), (error: unknown) => {
+    assert.ok(error instanceof MutationBoundaryError);
+    assert.equal(error.counts.length, 30);
+    assert.equal(error.toJSON().counts.length, 30);
+    assert.match(error.message, /and 10 more selected tables/);
+    assert.doesNotMatch(error.message, /table_29:|secret-row/);
+    assert.equal((error.message.match(/table_\\d{2}:/g) ?? []).length, 20);
+    return true;
+  });
+});
