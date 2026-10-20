@@ -1,13 +1,14 @@
 # Changelog
 
-## Unreleased — v0.5.0 (adoption verification, not published)
+## 0.5.0 — adoption verification (release candidate, not published)
 
 - Verify published v0.4.0 through an independently installed packed-tarball ESM consumer using real disposable PostgreSQL (PR #40).
 - Add real NestJS HTTP + TypeORM regressions for a failed operation that leaves a write versus one rolled back (PR #41).
 - Confirm package adoption in the Estima HTTP integration suite using Bun and Jest/ts-jest; native dynamic import is needed for the ESM package in Estima's CommonJS Jest tests (Estima PR #12).
+- Add adapter-shape unit regressions for pg.Pool and compatible query interfaces (PR #45).
 - Document scope, remaining clarification atomicity issue #10, and supported consumer configurations.
 
-**Compatibility:** No MutationBoundary public runtime API changes in this section. No v0.5.0 release has been made.
+**Compatibility:** No MutationBoundary public runtime API changes in this section. Tag and publish only after complete release-candidate CI and npm artifact review.
 
 
 ## 0.4.0 — diagnostics and reliability (published 2026-10-21)
