@@ -56,6 +56,8 @@ jobs:
       - run: npm run build
       - run: npm pack --dry-run
       - run: npm run test:consumer
+      - name: Verify packed package in external PostgreSQL consumer
+        run: npm run test:external:postgres
       - name: Validate published npm 0.4.0 in a clean consumer
         run: npm run test:registry -- mutation-boundary@0.4.0
       - run: node --input-type=module -e "import('./dist/index.js').then(m => { if (typeof m.assertNoMutation !== 'function') process.exit(1) })"
