@@ -169,3 +169,40 @@ test('pg-like adapter with query, connect and numeric pool metrics pins and rele
   assert.equal(directQueries, 0);
   assert.deepEqual(f.stats(), { queryReads: 2, releases: 1, connects: 1 });
 });
+
+
+test('action rejection after a pool snapshot still releases the client exactly once', async () => {
+  const f = fixture({ baseline: [{ id: 1, value: 'unchanged' }] });
+  const original = new Error('caller failed');
+  await assert.rejects(assertNoMutation({
+    db: f.pool, tables, safety,
+    action: async () => { throw original; },
+  }), received => received === original);
+  assert.deepEqual(f.stats(), { queryReads: 2, releases: 1, connects: 1 });
+});
+
+test('detected mutations take precedence over action errors and release exactly once', async () => {
+  const f = fixture({ baseline: [{ id: 1, value: 'old' }], after: [{ id: 1, value: 'new' }] });
+  const original = new Error('private caller failure');
+  await assert.rejects(assertNoMutation({
+    db: f.pool, tables, safety,
+    action: async () => { throw original; },
+  }), received => {
+    assert.ok(received instanceof MutationBoundaryError);
+    assert.deepEqual(received.toJSON().counts, [{ table: 'tasks', inserted: 0, updated: 1, deleted: 0 }]);
+    assert.doesNotMatch(JSON.stringify(received), /private caller failure|old|new/);
+    return true;
+  });
+  assert.deepEqual(f.stats(), { queryReads: 2, releases: 1, connects: 1 });
+});
+
+test('a failed post-action snapshot propagates its driver error and releases once', async () => {
+  const error = new Error('post-action database failure');
+  const f = fixture({ failAtRead: 2, clientError: error });
+  const actionError = new Error('earlier action failure');
+  await assert.rejects(assertNoMutation({
+    db: f.pool, tables, safety,
+    action: async () => { throw actionError; },
+  }), received => received === error);
+  assert.deepEqual(f.stats(), { queryReads: 2, releases: 1, connects: 1 });
+});
