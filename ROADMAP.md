@@ -54,14 +54,22 @@ The v0.3.0 GitHub release and successful publish workflow are recorded on 2026-1
 - [x] Deterministically ordered text, capped at 20 table summaries; full structured counts remain available (CI passed in PR #33).
 - [x] JSON error representation contains table metadata and counts only; caller/driver exceptions remain outside this guarantee (released in v0.4.0).
 
-## v0.5.0 — adoption evidence and targeted compatibility (proposed)
+## Released — v0.5.0: adoption evidence and targeted compatibility
 
-- [x] Verify published v0.4.0 registry consumer with CI and verify packaged ESM/PostgreSQL usage in PR #40; Estima's Bun frozen-lockfile installation remains a separate unverified adoption gate.
+- [x] Verify published v0.4.0 registry consumer with CI and verify packaged ESM/PostgreSQL usage in PR #40; Estima's Bun frozen-lockfile integration was subsequently verified in Estima PR #12.
 - [x] Verify a real Estima failed-manual-estimate HTTP regression with published v0.4.0 on disposable PostgreSQL (Estima PR #12, full CI green). **Issue #10 clarification atomicity remains unverified/unfixed by this test.** See [adoption evidence](docs/ESTIMA_ADOPTION.md).
 - [ ] Extend Estima's real HTTP mutation assertion to the clarification failure from issue #10 after the product transaction contract is fixed.
-- [ ] Review `pg.Pool` versus compatible query adapters for connection identity and cleanup with focused failing tests before changing detection logic.
+- [x] Review `pg.Pool` versus query-first adapters with focused tests (PR #45); preserve existing detection behavior, with unsupported custom dual-interface pool shapes documented.
 - [x] Document field-tested integration limitations, including Jest CommonJS native ESM import and Estima's verified Bun consumer (see [compatibility evidence](docs/COMPATIBILITY.md)); further field reports remain welcome.
-- [ ] Keep dependency-free runtime and safety guardrails; no speculative framework helpers.
+- [x] Keep dependency-free runtime and existing safety guardrails; no speculative framework helpers.
+
+## v0.6.0 — reliability review (proposed, not promised)
+
+- [ ] Examine actual PostgreSQL failure and cleanup paths for reproducible defects, including client release errors and failed post-action snapshots. Add targeted regressions before changing runtime semantics.
+- [ ] Audit table/key and filter validation timing; fail closed before invoking the action and document any intentional error precedence.
+- [ ] Confirm published v0.5.0 registry smoke, packed package exports/types, PostgreSQL CI and clean external consumer reproducibility.
+- [ ] Revisit the Estima clarification scenario only with a verified application transaction fix; it is not a library promise.
+- [ ] Avoid widening the API until a concrete consumer failure demonstrates a need.
 
 ## v1.0.0 — stable contract
 
