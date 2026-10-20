@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { assertNoMutation, MutationBoundaryError } from '../src/index.ts';
+import { assertNoMutation, MutationBoundaryError, type TableSpec } from '../src/index.ts';
 
 const safety = {
   expectedDatabase: 'mutation_boundary_test',
@@ -307,4 +307,51 @@ test('release failure preserves a pre-existing cause', async () => {
   await assert.rejects(assertNoMutation({
     db, tables, safety, action: async () => { throw new Error('action failed'); },
   }), received => received === releaseError && (received as Error).cause === existing);
+});
+
+
+test('invalid snapshot configuration fails before action and releases a pooled client', async () => {
+  const cases: { name: string; selected: readonly TableSpec[]; maxRowsPerTable?: number; message: RegExp }[] = [
+    { name: 'duplicate table', selected: [...tables, ...tables], message: /duplicate table selection/ },
+    { name: 'unsafe table name', selected: [{ name: 'tasks;drop', key: 'id' }], message: /unsafe SQL identifier/ },
+    { name: 'empty composite key', selected: [{ name: 'tasks', key: [] }], message: /invalid row key/ },
+    { name: 'duplicate composite key', selected: [{ name: 'tasks', key: ['id', 'id'] }], message: /invalid row key/ },
+    { name: 'conflicting projection options', selected: [{ name: 'tasks', key: 'id', includeColumns: ['id'], excludeColumns: ['value'] }], message: /choose includeColumns or excludeColumns/ },
+    { name: 'excluded key', selected: [{ name: 'tasks', key: 'id', excludeColumns: ['id'] }], message: /cannot exclude key columns/ },
+    { name: 'invalid filter', selected: [{ name: 'tasks', key: 'id', where: { column: 'id;bad', equals: 1 } }], message: /unsafe SQL identifier/ },
+    { name: 'invalid row limit', selected: tables, maxRowsPerTable: 0, message: /invalid snapshot limit/ },
+  ];
+  for (const scenario of cases) {
+    const f = fixture();
+    let actionCalls = 0;
+    await assert.rejects(assertNoMutation({
+      db: f.pool,
+      tables: scenario.selected,
+      safety,
+      ...(scenario.maxRowsPerTable === undefined ? {} : { maxRowsPerTable: scenario.maxRowsPerTable }),
+      action: async () => { actionCalls++; },
+    }), scenario.message, scenario.name);
+    assert.equal(actionCalls, 0, scenario.name);
+    assert.equal(f.stats().releases, 1, scenario.name);
+    assert.equal(f.stats().connects, 1, scenario.name);
+  }
+});
+
+test('baseline row-key ambiguity fails closed before invoking action', async () => {
+  const cases = [
+    { name: 'duplicate key', baseline: [{ id: 1 }, { id: 1 }], message: /duplicate row key/ },
+    { name: 'missing key', baseline: [{ value: 'no id' }], message: /missing row key/ },
+    { name: 'null key', baseline: [{ id: null }], message: /missing row key/ },
+    { name: 'unsupported value', baseline: [{ id: 1, value: undefined }], message: /unsupported snapshot value/ },
+  ];
+  for (const scenario of cases) {
+    const f = fixture({ baseline: scenario.baseline });
+    let actionCalls = 0;
+    await assert.rejects(assertNoMutation({
+      db: f.pool, tables, safety,
+      action: async () => { actionCalls++; },
+    }), scenario.message, scenario.name);
+    assert.equal(actionCalls, 0, scenario.name);
+    assert.equal(f.stats().releases, 1, scenario.name);
+  }
 });
