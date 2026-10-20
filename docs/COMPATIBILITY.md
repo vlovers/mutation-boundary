@@ -13,6 +13,12 @@ compatibility promises.
 | Estima Bun 1.3.2, Jest/ts-jest CommonJS test suite, NestJS HTTP, PostgreSQL 17 | [Estima PR #12](https://github.com/vlovers/estima/pull/12), [PostgreSQL CI](https://github.com/vlovers/estima/actions/runs/39513022289) and [Bun migration CI](https://github.com/vlovers/estima/actions/runs/39513022315) | Test-only dependency `mutation-boundary@0.4.0`. Estima uses a native dynamic ESM import because static import is transformed to CommonJS `require()` by its Jest setup. |
 | Published npm v0.4.0 and packed ESM / TS consumer | Registry consumer smoke in CI and [PR #35](https://github.com/vlovers/mutation-boundary/pull/35) | Passing registry installation does not establish byte-for-byte source-to-tarball identity. |
 
+## Adapter shape and connection identity
+
+The current implementation treats an object with only `connect()` as a pool and pins the returned client for safety and both snapshots. For an object exposing both `query()` and `connect()`, it treats the object as a pool **only** if numeric `totalCount` and `idleCount` are also present, as in `pg.Pool`. Otherwise the direct `query()` interface is used. This protects query-first adapters such as TypeORM DataSource from accidental checkout, but a custom dual-interface pool **without** counters is not guaranteed to have snapshot connection affinity. Supply a pinned `pg.Client`, a supported `pg.Pool`, or a query adapter with an explicitly stable session. Do not infer pinning solely from a `connect` method.
+
+This is a documented limitation, not a new public API or promise of compatibility with arbitrary custom pool shims.
+
 ## Unsupported or not proven
 
 - No production, shared-database, CDC, transaction tracing or comprehensive concurrency guarantees.
