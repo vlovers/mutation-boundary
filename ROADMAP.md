@@ -56,8 +56,8 @@ The v0.3.0 GitHub release and successful publish workflow are recorded on 2026-1
 
 ## v0.5.0 — adoption evidence and targeted compatibility (proposed)
 
-- [ ] Run a frozen-lockfile external consumer against published v0.4.0 and capture reproducible ESM/TypeScript behavior.
-- [ ] Reproduce Estima's failed-request regression on a disposable, isolated PostgreSQL database; do not claim adoption until test evidence is available.
+- [x] Verify published v0.4.0 registry consumer with CI and verify packaged ESM/PostgreSQL usage in PR #40; Estima's Bun frozen-lockfile installation remains a separate unverified adoption gate.
+- [ ] Reproduce Estima's failed-request regression using the published package **inside Estima** on disposable PostgreSQL; representative external-PostgreSQL and NestJS HTTP coverage passed in PRs #40 and #41, but the real app remains unverified. See [Estima adoption evidence](docs/ESTIMA_ADOPTION.md).
 - [ ] Review `pg.Pool` versus compatible query adapters for connection identity and cleanup with focused failing tests before changing detection logic.
 - [ ] Resolve actionable field reports and document the integration limitations without widening the public API.
 - [ ] Keep dependency-free runtime and safety guardrails; no speculative framework helpers.
