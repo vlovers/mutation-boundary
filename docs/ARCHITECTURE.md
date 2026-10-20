@@ -1,11 +1,11 @@
-# Architecture and v0.2 scope
+# Architecture and current v0.4 scope
 
 MutationBoundary is a small, TypeORM-independent PostgreSQL test assertion library, not an ORM, migration tool or database auditor.
 
 ## Public contract
 
 - `assertNoMutation(options)`: verify test DB identity, snapshot selected tables, await action, snapshot again, compare and throw a redacted summary if any net changes remain.
-- `MutationBoundaryError`: table-level counts; no raw row keys or values.
+- `MutationBoundaryError`: table-level counts and typed JSON report; no raw row keys or values. Human error messages are alphabetically ordered and capped at 20 table summaries; the full counts array is intentionally not capped.
 - `MutationBoundarySafetyError`: fail-closed identity/confirmation errors.
 
 ## Possible future module boundaries
