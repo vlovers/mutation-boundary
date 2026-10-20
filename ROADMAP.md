@@ -43,7 +43,7 @@ The v0.3.0 GitHub release and successful publish workflow are recorded on 2026-1
 - [x] Jest/Vitest async compatibility verified; no wrappers needed.
 - [x] Document tested Node 24/PostgreSQL 16/ESM/Jest/Vitest combinations; CommonJS remains unverified.
 
-## v0.4.0 — diagnostics and hardening (P2)
+## v0.4.0 release candidate — diagnostics and hardening (P2)
 
 - [x] Run disposable-PostgreSQL transaction/lifecycle regressions (commits, savepoints, failures, exhaustion); PostgreSQL CI passed in PR #32.
 - [ ] Verify unit failure-path matrix for safety failures, baseline/after queries, callback exception precedence and connection release (passed and merged in PR #34).
