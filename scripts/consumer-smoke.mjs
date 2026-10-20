@@ -25,10 +25,21 @@ try {
       "import { assertNoMutation, MutationBoundaryError } from 'mutation-boundary';",
       "assert.equal(typeof assertNoMutation, 'function');",
       "assert.equal(typeof MutationBoundaryError, 'function');",
+      "const safety = { expectedDatabase: 'smoke_test', expectedUser: 'smoke_ci', confirmDisposableTestDatabase: true };",
+      "let read = 0;",
+      "const db = { async query(sql) { if (sql.includes('current_database()')) return [{ database_name: 'smoke_test', user_name: 'smoke_ci' }]; return read++ === 0 ? [{ id: 1, privateValue: 'no-leak' }] : [{ id: 1, privateValue: 'changed-secret' }]; } };",
+      "try { await assertNoMutation({ db, tables: [{ name: 'tasks', key: 'id' }], safety, action: async () => {} }); assert.fail('expected mutation error'); } catch (error) {",
+      "  assert.ok(error instanceof MutationBoundaryError);",
+      "  assert.deepEqual(error.toJSON(), { name: 'MutationBoundaryError', counts: [{ table: 'tasks', inserted: 0, updated: 1, deleted: 0 }] });",
+      "  assert.doesNotMatch(JSON.stringify(error), /no-leak|changed-secret|privateValue/);",
+      "}",
+
     ].join('\n'));
     execFileSync('node', [consumer], { cwd: workspace, stdio: 'inherit' });
     const declarations = readFileSync(join(workspace, 'node_modules', 'mutation-boundary', 'dist', 'index.d.ts'), 'utf8');
     assert.match(declarations, /assertNoMutation/);
+    assert.match(declarations, /MutationBoundaryReport/);
+    assert.match(declarations, /toJSON/);
     const packageJson = JSON.parse(readFileSync(join(workspace, 'node_modules', 'mutation-boundary', 'package.json'), 'utf8'));
     assert.equal(packageJson.main, './dist/index.js');
     assert.equal(packageJson.types, './dist/index.d.ts');
@@ -41,7 +52,9 @@ try {
     execFileSync('node', [cjsConsumer], { cwd: workspace, stdio: 'inherit' });
     const typeConsumer = join(workspace, 'consumer.ts');
     writeFileSync(typeConsumer, [
-      "import { assertNoMutation, MutationBoundaryError, type AssertNoMutationOptions } from 'mutation-boundary';",
+      "import { assertNoMutation, MutationBoundaryError, type MutationBoundaryReport, type AssertNoMutationOptions } from 'mutation-boundary';",
+      "declare const report: MutationBoundaryReport;",
+      "void report;",
       "const check: typeof assertNoMutation = assertNoMutation;",
       "const options: AssertNoMutationOptions | undefined = undefined;",
       "void check; void options; void MutationBoundaryError;",

@@ -1,6 +1,6 @@
 # Release process and historical verification checklist
 
-MutationBoundary v0.2.0 is the current released experimental version; v0.1.0 was the initial release. Package listing: [mutation-boundary on npm](https://www.npmjs.com/package/mutation-boundary).
+MutationBoundary v0.3.0 is the current GitHub release; the v0.3.0 npm registry smoke passed in CI for PR #32. The v0.4.0 changes remain unreleased. Package listing: [mutation-boundary on npm](https://www.npmjs.com/package/mutation-boundary).
 
 The library must only be used against disposable, isolated PostgreSQL test databases. The published API is experimental and does not guarantee detection of transient, rolled-back, or concurrent writes.
 
@@ -35,11 +35,12 @@ The [publish.yml](../.github/workflows/publish.yml) workflow triggers when a ver
 **One-time npm setup (required):** on the `mutation-boundary` npm package settings page, configure Trusted Publisher → GitHub Actions with owner `vlovers`, repository `mutation-boundary`, workflow filename `publish.yml`, and no GitHub environment. OIDC cannot work before this npm-side trust is established.
 
 For the next release:
+0. For v0.4.0 specifically, run the external packed-consumer diagnostics smoke and review the exported report type; verify `npm pack --dry-run`, disposable PostgreSQL CI, README/CHANGELOG, and lockfile before bumping.
 1. Review changes and update version via `npm version patch` (or minor/major), making sure `package-lock.json` matches.
 2. Push the version commit to `main`, await green CI, then push its `vX.Y.Z` tag.
 3. Watch the [publish workflow](https://github.com/vlovers/mutation-boundary/actions/workflows/publish.yml) and verify the new version on npm.
 4. Create a GitHub Release with reviewed notes from the same tag. GitHub Releases are not yet automatically created.
 
-Already-published `0.1.0`, `0.1.1`, and `0.2.0` cannot be re-published under the same version. Do not re-run completed publish workflows for existing versions: npm may reject them with a staged-version or immutable-version conflict. Do not change the tag/version mapping to bypass npm's immutable version rule.
+Already-published `0.1.0`, `0.1.1`, `0.2.0`, and `0.3.0` cannot be re-published under the same version. Do not re-run completed publish workflows for existing versions: npm may reject them with a staged-version or immutable-version conflict. Do not change the tag/version mapping to bypass npm's immutable version rule.
 
 This workflow does **not** automatically bump versions or release every commit; publishing is deliberately an explicit version-tag event.

@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased — v0.4.0 candidate (not published)
+
+- Preserve `MutationBoundaryError.counts` and add JSON-safe `toJSON()` / typed `MutationBoundaryReport` for CI diagnostics.
+- Sort human-readable table diagnostics deterministically and cap display at 20 tables; full aggregate counts remain available.
+- Add disposable PostgreSQL transaction, savepoint, pooling, failure-path and cleanup regressions.
+- Validate the new diagnostics contract in a clean external ESM and TypeScript tarball consumer.
+
+**Status:** Changes on main are not an npm release. Do not tag/publish until CI, package artifact, compatibility, and release workflow are reviewed.
+
+
 ## 0.3.0 — integration ergonomics
 
 - Add PostgreSQL pg.Client and pg.Pool usage recipes and a real single-connection pool timeout/recovery regression.
