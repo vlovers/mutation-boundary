@@ -46,28 +46,28 @@ test('committed writes on an independent connection are detected', async () => {
   }
 });
 
-test('independent uncommitted writes remain invisible to snapshots; rollback leaves no net change', async () => {
+test('independent uncommitted writes are invisible until commit', async () => {
   const pool = new pg.Pool({ connectionString: connectionString(), max: 2, connectionTimeoutMillis: 1000 });
+  let writer: pg.PoolClient | undefined;
   try {
     await pool.query('CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
+    writer = await pool.connect();
+    await writer.query('BEGIN');
     await assertNoMutation({
       db: pool, tables, safety,
       action: async () => {
-        const writer = await pool.connect();
-        try {
-          await writer.query('BEGIN');
-          await writer.query("INSERT INTO boundary_lifecycle_probe VALUES (1, 'uncommitted')");
-          // Snapshot client's READ COMMITTED view cannot see this transaction.
-          await writer.query('ROLLBACK');
-        } finally {
-          writer.release();
-        }
+        await writer!.query("INSERT INTO boundary_lifecycle_probe VALUES (1, 'uncommitted')");
+        // The snapshot uses another connection and cannot see this uncommitted row.
       },
     });
-    const count = await pool.query('SELECT count(*)::integer AS n FROM boundary_lifecycle_probe');
-    assert.equal(count.rows[0]?.n, 0);
-    assert.equal(pool.idleCount, pool.totalCount);
+    await writer.query('COMMIT');
+    const count = await writer.query('SELECT count(*)::integer AS n FROM boundary_lifecycle_probe');
+    assert.equal(count.rows[0]?.n, 1);
   } finally {
+    if (writer) {
+      try { await writer.query('ROLLBACK'); } catch { /* connection may already be closed */ }
+      writer.release();
+    }
     try { await pool.query('DROP TABLE IF EXISTS boundary_lifecycle_probe'); }
     finally { await pool.end(); }
   }
