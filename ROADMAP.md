@@ -48,9 +48,9 @@ The v0.3.0 GitHub release and successful publish workflow are recorded on 2026-1
 - [ ] Run disposable-PostgreSQL transaction/lifecycle regressions (commits, savepoints, failures, exhaustion) and investigate only reproducible defects.
 - [ ] Reconcile README/release docs and pinned npm registry smoke with actual v0.3.0 artifact.
 
-- [ ] Structured machine-readable reports that expose counts and metadata only.
-- [ ] Deterministic ordering and bounded CI-friendly failures.
-- [ ] No raw rows, keys or credentials in exported diagnostics.
+- [x] Structured machine-readable reports exposing selected table names and counts only (development branch; requires CI verification).
+- [x] Deterministically ordered text, capped at 20 table summaries; full structured counts remain available (development branch).
+- [x] JSON error representation contains table metadata and counts only; caller/driver exceptions remain outside this guarantee (development branch).
 
 ## v1.0.0 — stable contract
 
