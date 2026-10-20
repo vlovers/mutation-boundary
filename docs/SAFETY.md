@@ -1,4 +1,4 @@
-# MutationBoundary safety notes (v0.3.0, experimental)
+# MutationBoundary safety notes (v0.4.0, experimental)
 
 MutationBoundary is a PostgreSQL net-state assertion tool for **disposable, isolated test databases only**. It compares snapshots of selected tables before and after an action. It cannot detect writes that were reverted before the second snapshot, mutations in unselected tables, or changes outside PostgreSQL.
 
@@ -33,7 +33,7 @@ Raw snapshot and diff helpers are internal implementation details, not public pa
 - Snapshot size is capped; exceeding the cap fails the assertion rather than passing.
 - Row keys must be unique and non-null. Simple identifier names support optionally schema-qualified tables (`schema.table`); arbitrary SQL identifiers and expressions are unsupported.
 - Action errors are rethrown if no mutation is detected. If mutations are detected, the mutation contract error takes precedence.
-- v0.3.0 has been released on GitHub; continue verifying PostgreSQL CI, package contents, connection safety and clean external installation for subsequent releases.
+- v0.4.0 has been released on GitHub; continue verifying PostgreSQL CI, package contents, connection safety and clean external installation for subsequent releases.
 - Since v0.1.1, unsupported driver values (undefined, non-finite numbers, bigint, functions and symbols) and cyclic structures fail closed rather than silently comparing ambiguous snapshots. This is not a guarantee that every custom driver representation is handled.
 
 ## v0.2: bounded snapshot representations
