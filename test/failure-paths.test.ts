@@ -252,6 +252,59 @@ test('release failure currently takes precedence over earlier action failure', a
   };
   await assert.rejects(assertNoMutation({
     db, tables, safety, action: async () => { throw actionError; },
-  }), received => received === releaseError);
+  }), received => {
+    assert.equal(received, releaseError);
+    assert.equal((received as Error & { cause?: unknown }).cause, actionError);
+    assert.equal(JSON.stringify(received), '{}');
+    return true;
+  });
   assert.equal(releases, 1);
+});
+
+test('release failure retains mutation report as its cause without leaking row data', async () => {
+  const releaseError = new Error('release failed');
+  let reads = 0;
+  const db = {
+    async connect() {
+      return {
+        async query(sql: string): Promise<Row[]> {
+          if (sql.includes('current_database()')) {
+            return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+          }
+          reads++;
+          return [{ id: 1, privateField: reads === 1 ? 'before secret' : 'after secret' }];
+        },
+        release() { throw releaseError; },
+      };
+    },
+  };
+  await assert.rejects(assertNoMutation({ db, tables, safety, action: async () => {} }), received => {
+    assert.equal(received, releaseError);
+    const cause = (received as Error & { cause?: unknown }).cause;
+    assert.ok(cause instanceof MutationBoundaryError);
+    assert.equal(cause.counts[0]?.updated, 1);
+    assert.doesNotMatch(JSON.stringify(received), /before secret|after secret/);
+    return true;
+  });
+});
+
+test('release failure preserves a pre-existing cause', async () => {
+  const existing = new Error('existing diagnostic');
+  const releaseError = new Error('release failed', { cause: existing });
+  const db = {
+    async connect() {
+      return {
+        async query(sql: string): Promise<Row[]> {
+          if (sql.includes('current_database()')) {
+            return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+          }
+          return [{ id: 1 }];
+        },
+        release() { throw releaseError; },
+      };
+    },
+  };
+  await assert.rejects(assertNoMutation({
+    db, tables, safety, action: async () => { throw new Error('action failed'); },
+  }), received => received === releaseError && (received as Error).cause === existing);
 });
