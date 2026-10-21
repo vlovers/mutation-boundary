@@ -82,7 +82,7 @@ This is a candidate checklist, **not** evidence that v0.6.0 is published:
 - [x] Disposable PostgreSQL value and composite-key regression suite (#61).
 - [ ] Review backward compatibility of the new **32 MiB per-snapshot retained canonical-string cap** and stricter projection validation; both may reject previously accepted inputs.
 - [ ] Verify final source SHA on CI with isolated PostgreSQL, NestJS/TypeORM, Jest/Vitest, `npm pack` and clean external Node/TypeScript/PostgreSQL consumer.
-- [ ] Inspect `npm pack --json` contents, exports, declaration types, README and this changelog against exactly the proposed release commit.
+- [x] Install automated `npm pack --json --dry-run` allowlist checks and manifest validation in CI and publish workflow (PR #63 candidate); requires final tagged release review before publishing.
 - [ ] Confirm GitHub tag/release, provenance-enabled Trusted Publishing and npm registry contents after explicit maintainer approval. No automatic v0.6.0 publish.
 
 Limitations remain: the cap does not constrain driver query memory or peak process RSS; snapshots cannot prove absence of transient/rolled-back writes, unselected table changes or concurrent interference.
