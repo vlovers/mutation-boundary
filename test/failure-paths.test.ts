@@ -454,3 +454,56 @@ test('post-action aggregate snapshot limit propagates and releases pooled connec
   assert.equal(connects, 1);
   assert.equal(releases, 1);
 });
+
+
+test('aggregate snapshot budget is independently reset between baseline and after snapshots', async () => {
+  const row = { id: 1, payload: 'p'.repeat(600_000) };
+  let reads = 0;
+  let actions = 0;
+  const db = {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      reads++;
+      return [row];
+    },
+  };
+  await assertNoMutation({
+    db, tables, safety,
+    action: async () => { actions++; },
+  });
+  assert.equal(reads, 2);
+  assert.equal(actions, 1);
+});
+
+test('post-action snapshot budget rejection retains action error when cleanup itself fails', async () => {
+  const largeRows = Array.from({ length: 41 }, (_, i) => ({
+    id: i + 1, payload: 'v'.repeat(850_000),
+  }));
+  const releaseError = new Error('release broke');
+  let reads = 0;
+  let releases = 0;
+  const pool = {
+    async connect() {
+      return {
+        async query(sql: string): Promise<Row[]> {
+          if (sql.includes('current_database()')) return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+          reads++;
+          return reads === 1 ? [{ id: 1, payload: 'initial' }] : largeRows;
+        },
+        release() { releases++; throw releaseError; },
+      };
+    },
+  };
+  await assert.rejects(assertNoMutation({
+    db: pool, tables, safety,
+    action: async () => { throw new Error('action failed before overlarge snapshot'); },
+  }), (received: unknown) => {
+    assert.equal(received, releaseError);
+    assert.ok((received as Error & { cause?: unknown }).cause instanceof Error);
+    assert.match(String((received as Error & { cause?: unknown }).cause), /snapshot total size limit exceeded/);
+    assert.doesNotMatch(JSON.stringify(received), /initial|vvvvvv/);
+    return true;
+  });
+  assert.equal(reads, 2);
+  assert.equal(releases, 1);
+});

@@ -65,11 +65,12 @@ The v0.3.0 GitHub release and successful publish workflow are recorded on 2026-1
 
 ## v0.6.0 — reliability review (proposed, not promised)
 
-- [ ] Examine actual PostgreSQL failure and cleanup paths for reproducible defects, including client release errors and failed post-action snapshots. Add targeted regressions before changing runtime semantics.
-- [ ] Audit table/key and filter validation timing; fail closed before invoking the action and document any intentional error precedence.
-- [ ] Confirm published v0.5.0 registry smoke, packed package exports/types, PostgreSQL CI and clean external consumer reproducibility.
+- [x] Characterize PostgreSQL/action failure and cleanup precedence, preserve original failure as cleanup error cause (PRs #49–#52), and verify post-action budget failure cleanup (PR #57).
+- [x] Add invalid identifier/key/filter/projection/baseline regressions proving action is not invoked and a pool client is released (PR #53).
+- [x] Confirm published v0.5.0 registry smoke, package exports/types, PostgreSQL CI and packed external consumer in PR #48 and subsequent green CI.
 - [ ] Revisit the Estima clarification scenario only with a verified application transaction fix; it is not a library promise.
-- [ ] Avoid widening the API until a concrete consumer failure demonstrates a need.
+- [x] Preserve existing API while fixing mutable-result false negatives and redundant encoding (PRs #54–#55), and cap retained canonical snapshot data to 32 MiB (PR #56). 
+- [ ] Audit peak process memory, driver allocations and larger valid workloads: aggregate retained-bytes cap is not an overall RSS limit.
 
 ## v1.0.0 — stable contract
 
