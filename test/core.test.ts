@@ -268,3 +268,34 @@ test('human diagnostic text is capped without losing structured counts', async (
     return true;
   });
 });
+
+
+test('aggregate snapshot cap applies across selected tables before action', async () => {
+  const rows = Array.from({ length: 21 }, (_, i) => ({
+    id: i + 1, payload: 's'.repeat(850_000),
+  }));
+  let actionCalled = false;
+  let reads = 0;
+  const db = {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) {
+        return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      }
+      reads++;
+      return rows;
+    },
+  };
+  await assert.rejects(assertNoMutation({
+    db,
+    tables: [{ name: 'tasks', key: 'id' }, { name: 'audit', key: 'id' }],
+    safety,
+    action: async () => { actionCalled = true; },
+  }), (error: unknown) => {
+    assert.ok(error instanceof Error);
+    assert.match(error.message, /snapshot total size limit exceeded \(32 MiB\) in table audit/);
+    assert.doesNotMatch(error.message, /ssssssss/);
+    return true;
+  });
+  assert.equal(reads, 2, 'the second selected table triggers the shared cap');
+  assert.equal(actionCalled, false);
+});
