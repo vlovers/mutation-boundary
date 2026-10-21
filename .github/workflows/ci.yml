@@ -54,6 +54,7 @@ jobs:
           NODE_OPTIONS: --experimental-strip-types
         run: npx --no-install vitest run test/runners/vitest.test.mjs
       - run: npm run build
+      - run: npm run test:release-candidate
       - run: npm run test:package-audit
       - run: node scripts/verify-package.mjs
       - run: npm run test:consumer

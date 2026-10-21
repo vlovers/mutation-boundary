@@ -1,6 +1,6 @@
 {
   "name": "mutation-boundary",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "type": "module",
   "description": "Detect unexpected net PostgreSQL writes after failed operations in isolated integration tests",
   "engines": {
@@ -21,9 +21,10 @@
     "check:package": "npm run build && node scripts/verify-package.mjs",
     "test:package-audit": "node --test test/package-audit.test.mjs",
     "test:consumer": "node scripts/consumer-smoke.mjs",
-    "check:release": "npm run typecheck && npm test && npm run test:package-audit && npm run build && npm run check:package && npm run test:consumer",
+    "check:release": "npm run typecheck && npm test && npm run test:release-candidate && npm run test:package-audit && npm run build && npm run check:package && npm run test:consumer",
     "test:registry": "node scripts/registry-smoke.mjs",
-    "test:external:postgres": "node scripts/postgres-consumer-smoke.mjs"
+    "test:external:postgres": "node scripts/postgres-consumer-smoke.mjs",
+    "test:release-candidate": "node --test test/release-candidate.test.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

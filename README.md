@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![npm version](https://img.shields.io/npm/v/mutation-boundary.svg)](https://www.npmjs.com/package/mutation-boundary)
 
-> **Latest published version: v0.5.0.** [GitHub release](https://github.com/vlovers/mutation-boundary/releases/tag/v0.5.0) · [npm package](https://www.npmjs.com/package/mutation-boundary/v/0.5.0). The API remains experimental; use only isolated disposable test databases.
+> **Latest published version: v0.5.0 (release candidate in GitHub: v0.6.0, not published).** [GitHub release](https://github.com/vlovers/mutation-boundary/releases/tag/v0.5.0) · [npm package](https://www.npmjs.com/package/mutation-boundary/v/0.5.0). The API remains experimental; use only isolated disposable test databases.
 
 An HTTP endpoint returns 500, an authorization check rejects a request, or a background job fails. **Did any committed row changes survive?** MutationBoundary compares the net state of selected PostgreSQL tables before and after an awaited action and fails the test when unexpected INSERT, UPDATE or DELETE changes remain.
 
@@ -15,7 +15,7 @@ A verified real-world consumer is [Estima PR #12](https://github.com/vlovers/est
 See [the real-world failed-request regression walkthrough](docs/EXAMPLE.md) for a before/after test pattern and redacted failure output.
 
 
-> **Unreleased v0.6 safety change (merged to main, not published):** Canonical snapshot strings are limited to 32 MiB per snapshot across all selected tables. This bounds retained canonical data, **not** database-driver buffers, query result memory, or overall peak RSS. A large selection may now fail closed before `action()`; narrow your table selection or projection. The limit is not configurable.
+> **v0.6.0 release candidate (not yet published):** Canonical snapshot strings are limited to 32 MiB per snapshot across all selected tables. This bounds retained canonical data, **not** database-driver buffers, query result memory, or overall peak RSS. A large selection may now fail closed before `action()`; narrow your table selection or projection. The limit is not configurable.
 
 ## Why use it?
 
