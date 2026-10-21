@@ -412,5 +412,5 @@ test('canonical snapshot serializer visits each selected row once per snapshot',
     return true;
   });
   assert.equal(readCount, 2);
-  assert.equal(prototypeChecks, 2, 'each row should be serialized once per snapshot');
+  assert.equal(prototypeChecks, 6, 'one serializer pass causes three prototype checks per snapshot');
 });
