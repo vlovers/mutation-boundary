@@ -56,3 +56,7 @@ The disposable PostgreSQL lifecycle regression suite covers a committed INSERT, 
 
 These are regression scenarios, **not** claims of automatic transaction management, protection against concurrent writers, detection of transient writes or control over PostgreSQL driver peak allocations.
 
+
+## Custom query adapters and projection safety (unreleased v0.6)
+
+When `excludeColumns` is used, MutationBoundary rejects accessor properties and symbol-keyed properties on returned row objects before constructing the selected projection. This avoids invoking untrusted getters while building snapshots, including getters on excluded fields, and prevents hidden unsupported values from silently bypassing validation. Plain data rows from `pg` remain supported. This is fail-closed behavior for custom adapters, not an ORM integration guarantee.

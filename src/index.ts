@@ -153,9 +153,24 @@ async function takeBoundarySnapshot(
     for (const row of rows) {
       // Validate the full driver value before invoking the action.
       // Otherwise unsupported data could be discovered only after writes.
-      const comparisonRow = excluded
-        ? Object.fromEntries(Object.entries(row).filter(([column]) => !excluded.includes(column)))
-        : row;
+      // Validate raw result shape before projection: Object.entries(row) would
+      // invoke accessors, and filtering could conceal unsupported symbol keys.
+      // Read descriptors instead of executing adapter-defined getters.
+      let comparisonRow: BoundaryRow = row;
+      if (excluded) {
+        const descriptors = Object.getOwnPropertyDescriptors(row);
+        if (Object.getOwnPropertySymbols(row).length) {
+          throw new Error(`MutationBoundary: unsupported snapshot symbol keys in table ${table.name}`);
+        }
+        if (Object.values(descriptors).some(descriptor => !('value' in descriptor))) {
+          throw new Error(`MutationBoundary: unsupported snapshot accessor in table ${table.name}`);
+        }
+        comparisonRow = Object.fromEntries(
+          Object.entries(descriptors)
+            .filter(([column, descriptor]) => descriptor.enumerable && !excluded.includes(column))
+            .map(([column, descriptor]) => [column, descriptor.value]),
+        );
+      }
       let serializedRow: string;
       try {
         serializedRow = stable(comparisonRow);
