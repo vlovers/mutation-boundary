@@ -72,7 +72,7 @@ The v0.3.0 GitHub release and successful publish workflow are recorded on 2026-1
 - [x] Preserve existing API while fixing mutable-result false negatives and redundant encoding (PRs #54–#55), and cap retained canonical snapshot data to 32 MiB (PR #56). 
 - [ ] Audit peak process memory, driver allocations and larger valid workloads: aggregate retained-bytes cap is not an overall RSS limit.
 
-## v0.6.0 release review gate (unreleased)
+## v0.6.0 release review gate (candidate; publishing pending approval)
 
 This is a candidate checklist, **not** evidence that v0.6.0 is published:
 
