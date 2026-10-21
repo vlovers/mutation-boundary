@@ -21,7 +21,7 @@
     "check:package": "npm run build && node scripts/verify-package.mjs",
     "test:package-audit": "node --test test/package-audit.test.mjs",
     "test:consumer": "node scripts/consumer-smoke.mjs",
-    "check:release": "npm run typecheck && npm test && npm run build && npm run test:consumer",
+    "check:release": "npm run typecheck && npm test && npm run test:package-audit && npm run build && npm run check:package && npm run test:consumer",
     "test:registry": "node scripts/registry-smoke.mjs",
     "test:external:postgres": "node scripts/postgres-consumer-smoke.mjs"
   },

@@ -563,3 +563,63 @@ test('a successful action followed by failed after-snapshot returns the query er
   assert.equal(actionRuns, 1);
   assert.equal(releases, 1);
 });
+
+
+test('aggregate cap rejects a single table within the permitted row-count limit', async () => {
+  const rows = Array.from({ length: 41 }, (_, i) => ({ id: i + 1, payload: 'b'.repeat(850_000) }));
+  let calls = 0;
+  let reads = 0;
+  const db = {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      reads++;
+      return rows;
+    },
+  };
+  await assert.rejects(assertNoMutation({
+    db, tables, safety,
+    action: async () => { calls++; },
+  }), /snapshot total size limit exceeded \(32 MiB\) in table tasks/);
+  assert.equal(reads, 1);
+  assert.equal(calls, 0);
+});
+
+test('narrow projection permits otherwise oversized rows without masking selected mutations', async () => {
+  const large = 'x'.repeat(850_000);
+  const rows = Array.from({ length: 41 }, (_, i) => ({ id: i + 1, state: 'before', ignored: large }));
+  let reads = 0;
+  const db = {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      reads++;
+      return rows;
+    },
+  };
+  await assert.rejects(assertNoMutation({
+    db, tables: [{ name: 'tasks', key: 'id', excludeColumns: ['ignored'] }], safety,
+    action: async () => { rows[0].state = 'after'; },
+  }), (error: unknown) => {
+    assert.ok(error instanceof MutationBoundaryError);
+    assert.equal(error.counts[0]?.updated, 1);
+    return true;
+  });
+  assert.equal(reads, 2);
+});
+
+test('large after-snapshot rejected even if action itself resolves', async () => {
+  const large = 'z'.repeat(850_000);
+  let reads = 0;
+  let executed = 0;
+  const db = {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      reads++;
+      return reads === 1 ? [{ id: 1, state: 'before' }] : Array.from({ length: 41 }, (_, i) => ({ id: i + 1, payload: large }));
+    },
+  };
+  await assert.rejects(assertNoMutation({
+    db, tables, safety, action: async () => { executed++; },
+  }), /snapshot total size limit exceeded \(32 MiB\) in table tasks/);
+  assert.equal(reads, 2);
+  assert.equal(executed, 1);
+});

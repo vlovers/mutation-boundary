@@ -80,7 +80,7 @@ This is a candidate checklist, **not** evidence that v0.6.0 is published:
 - [x] Snapshot row aliasing, single-pass canonical data and total retained-data cap (#54–#56).
 - [x] Fail-closed projection of custom adapter rows, including getter and symbol properties (#60).
 - [x] Disposable PostgreSQL value and composite-key regression suite (#61).
-- [ ] Review backward compatibility of the new **32 MiB per-snapshot retained canonical-string cap** and stricter projection validation; both may reject previously accepted inputs.
+- [x] Document behavioral backward-compatibility review of the **32 MiB retained-data cap** and stricter projection validation in [v0.6 release review](docs/V060_RELEASE_REVIEW.md); maintainer acceptance remains required.
 - [ ] Verify final source SHA on CI with isolated PostgreSQL, NestJS/TypeORM, Jest/Vitest, `npm pack` and clean external Node/TypeScript/PostgreSQL consumer.
 - [x] Install automated `npm pack --json --dry-run` allowlist checks and manifest validation in CI and publish workflow (PR #63 candidate); requires final tagged release review before publishing.
 - [ ] Confirm GitHub tag/release, provenance-enabled Trusted Publishing and npm registry contents after explicit maintainer approval. No automatic v0.6.0 publish.
