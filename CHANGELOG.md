@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — v0.6.0 reliability candidate (not published)
+## 0.6.0 — reliability candidate (not published; pending approval)
 
 - Preserve the original verification/action failure as a non-enumerable `cause` on a failed pool-client release when the release error has no existing cause, without changing thrown release-error identity or precedence (PRs #49–#52).
 - Reject invalid snapshot selection and duplicate keys before invoking the action; cover baseline and post-action failure cleanup (PRs #53, #57–#59).
