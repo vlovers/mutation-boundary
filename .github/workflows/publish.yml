@@ -70,7 +70,8 @@ jobs:
       - run: npm run test:consumer
       - name: Verify independently installed tarball on disposable PostgreSQL
         run: npm run test:external:postgres
-      - run: npm pack --dry-run
+      - run: npm run test:package-audit
+      - run: node scripts/verify-package.mjs
       - name: Publish verified tag to npm
         # Requires npm Trusted Publisher: vlovers / mutation-boundary / publish.yml
         # npm refuses an already-published version; do not change the package version implicitly.
