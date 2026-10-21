@@ -20,9 +20,9 @@ test('candidate package and lockfile root versions are identical', () => {
 
 test('published release documentation matches v0.6 tag and install instructions', () => {
   const pkg = json('package.json');
-  assert.match(text('CHANGELOG.md'), /0\.6\.0 — reliability candidate \(not published/);
-  assert.match(text('README.md'), /Latest published version: v0\.5\.0/);
-  assert.match(text('docs/V060_RELEASE_REVIEW.md'), /Published npm .*v0\.5\.0/);
+  assert.match(text('CHANGELOG.md'), /0\.6\.0 — reliability hardening \(published/);
+  assert.match(text('README.md'), /Published package: v0\.6\.0/);
+  assert.match(text('docs/V060_RELEASE_REVIEW.md'), /Tag `v0\.6\.0` points to `6dad293/);
   assert.equal(pkg.private, undefined);
 });
 
