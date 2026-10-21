@@ -357,3 +357,40 @@ test('excluded-column projection retains supported ordinary rows and detects sel
     safety, action: async () => {},
   });
 });
+
+
+test('non-enumerable own data columns do not enter excluded projection', async () => {
+  const mk = (privateValue: string): Row => {
+    const row: Row = { id: 1, state: 'stable' };
+    Object.defineProperty(row, 'internal', { value: privateValue, enumerable: false });
+    return row;
+  };
+  let reads = 0;
+  const db = {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      return [reads++ === 0 ? mk('before') : mk('after')];
+    },
+  };
+  await assertNoMutation({ db, tables: [{ name: 'tasks', key: 'id', excludeColumns: ['state'] }], safety, action: async () => {} });
+  assert.equal(reads, 2);
+});
+
+test('excluded projection refuses a getter even when it is non-enumerable', async () => {
+  let getterCalls = 0;
+  let actionCalls = 0;
+  const row: Row = { id: 1, state: 'safe' };
+  Object.defineProperty(row, 'hidden', { enumerable: false, get() { getterCalls++; throw Error('getter invoked'); } });
+  const db = {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      return [row];
+    },
+  };
+  await assert.rejects(assertNoMutation({
+    db, tables: [{ name: 'tasks', key: 'id', excludeColumns: ['state'] }], safety,
+    action: async () => { actionCalls++; },
+  }), /unsupported snapshot accessor/);
+  assert.equal(getterCalls, 0);
+  assert.equal(actionCalls, 0);
+});
