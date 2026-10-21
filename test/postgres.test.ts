@@ -297,3 +297,85 @@ test('single-connection pool fails with a bounded timeout when action also acqui
     }
   }
 });
+
+
+test('real PostgreSQL JSONB canonical order, nested updates and Unicode text', async () => {
+  const db = new pg.Client({ connectionString: process.env.MUTATION_BOUNDARY_TEST_DATABASE_URL });
+  await db.connect();
+  const safety = { expectedDatabase: 'mutation_boundary_test', expectedUser: 'mutation_boundary_ci', confirmDisposableTestDatabase: true as const };
+  const tables = [{ name: 'boundary_json_unicode_probe', key: 'id' }];
+  try {
+    await assertDisposableDatabase(db, safety);
+    await db.query('CREATE TEMP TABLE boundary_json_unicode_probe (id integer PRIMARY KEY, data jsonb NOT NULL, label text NOT NULL)');
+    await db.query('INSERT INTO boundary_json_unicode_probe VALUES (1, $1::jsonb, $2)', [JSON.stringify({ b: 2, nested: { x: 1, y: 'тест' } }), 'Привіт 👋']);
+    await assertNoMutation({ db, tables, safety, action: async () => {
+      await db.query('UPDATE boundary_json_unicode_probe SET data = $1::jsonb WHERE id = 1', [JSON.stringify({ nested: { y: 'тест', x: 1 }, b: 2 })]);
+    } });
+    await assert.rejects(assertNoMutation({ db, tables, safety, action: async () => {
+      await db.query("UPDATE boundary_json_unicode_probe SET data = jsonb_set(data, '{nested,x}', '2'::jsonb) WHERE id = 1");
+    } }), (error: unknown) => {
+      assert.ok(error instanceof MutationBoundaryError);
+      assert.equal(error.counts[0]?.updated, 1);
+      assert.doesNotMatch(error.message + JSON.stringify(error), /Привіт|тест/);
+      return true;
+    });
+    await assert.rejects(assertNoMutation({ db, tables, safety, action: async () => {
+      await db.query('UPDATE boundary_json_unicode_probe SET label = $1 WHERE id = 1', ['Привіт 🌍']);
+    } }), MutationBoundaryError);
+  } finally {
+    await db.end();
+  }
+});
+
+test('real PostgreSQL bytea and NULL transitions preserve typed net-state changes', async () => {
+  const db = new pg.Client({ connectionString: process.env.MUTATION_BOUNDARY_TEST_DATABASE_URL });
+  await db.connect();
+  const safety = { expectedDatabase: 'mutation_boundary_test', expectedUser: 'mutation_boundary_ci', confirmDisposableTestDatabase: true as const };
+  const tables = [{ name: 'boundary_binary_null_probe', key: 'id' }];
+  try {
+    await assertDisposableDatabase(db, safety);
+    await db.query('CREATE TEMP TABLE boundary_binary_null_probe (id integer PRIMARY KEY, payload bytea, annotation text)');
+    await db.query('INSERT INTO boundary_binary_null_probe VALUES (1, $1::bytea, NULL)', [Buffer.from([0, 255, 12])]);
+    await assertNoMutation({ db, tables, safety, action: async () => {} });
+    await assert.rejects(assertNoMutation({ db, tables, safety, action: async () => {
+      await db.query('UPDATE boundary_binary_null_probe SET annotation = $1 WHERE id = 1', ['not-null']);
+    } }), MutationBoundaryError);
+    await assert.rejects(assertNoMutation({ db, tables, safety, action: async () => {
+      await db.query('UPDATE boundary_binary_null_probe SET payload = $1::bytea WHERE id = 1', [Buffer.from([0, 255, 13])]);
+    } }), (error: unknown) => {
+      assert.ok(error instanceof MutationBoundaryError);
+      assert.equal(error.counts[0]?.updated, 1);
+      return true;
+    });
+  } finally {
+    await db.end();
+  }
+});
+
+test('real PostgreSQL composite keys distinguish updates from key replacement', async () => {
+  const db = new pg.Client({ connectionString: process.env.MUTATION_BOUNDARY_TEST_DATABASE_URL });
+  await db.connect();
+  const safety = { expectedDatabase: 'mutation_boundary_test', expectedUser: 'mutation_boundary_ci', confirmDisposableTestDatabase: true as const };
+  const tables = [{ name: 'boundary_composite_probe', key: ['tenant_id', 'member_id'] }];
+  try {
+    await assertDisposableDatabase(db, safety);
+    await db.query('CREATE TEMP TABLE boundary_composite_probe (tenant_id integer NOT NULL, member_id integer NOT NULL, state text NOT NULL, PRIMARY KEY (tenant_id, member_id))');
+    await db.query("INSERT INTO boundary_composite_probe VALUES (1, 1, 'open')");
+    await assert.rejects(assertNoMutation({ db, tables, safety, action: async () => {
+      await db.query("UPDATE boundary_composite_probe SET state = 'closed' WHERE tenant_id = 1 AND member_id = 1");
+    } }), (error: unknown) => {
+      assert.ok(error instanceof MutationBoundaryError);
+      assert.deepEqual(error.counts, [{ table: 'boundary_composite_probe', inserted: 0, updated: 1, deleted: 0 }]);
+      return true;
+    });
+    await assert.rejects(assertNoMutation({ db, tables, safety, action: async () => {
+      await db.query('UPDATE boundary_composite_probe SET member_id = 2 WHERE tenant_id = 1 AND member_id = 1');
+    } }), (error: unknown) => {
+      assert.ok(error instanceof MutationBoundaryError);
+      assert.deepEqual(error.counts, [{ table: 'boundary_composite_probe', inserted: 1, updated: 0, deleted: 1 }]);
+      return true;
+    });
+  } finally {
+    await db.end();
+  }
+});
