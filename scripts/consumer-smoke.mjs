@@ -43,6 +43,12 @@ try {
     const packageJson = JSON.parse(readFileSync(join(workspace, 'node_modules', 'mutation-boundary', 'package.json'), 'utf8'));
     assert.equal(packageJson.main, './dist/index.js');
     assert.equal(packageJson.types, './dist/index.d.ts');
+    assert.equal(packageJson.name, 'mutation-boundary');
+    assert.equal(packageJson.version, '0.5.0', 'unreleased source package must not be retagged');
+    assert.equal(packageJson.type, 'module');
+    assert.equal(packageJson.exports?.['.']?.types, './dist/index.d.ts');
+    assert.equal(packageJson.exports?.['.']?.default, './dist/index.js');
+    assert.equal(packageJson.engines?.node, '>=24');
     const tarballListing = execFileSync('tar', ['-tzf', tarball], { encoding: 'utf8' });
     assert.ok(tarballListing.includes('package/dist/index.js'));
     assert.ok(tarballListing.includes('package/dist/index.d.ts'));
