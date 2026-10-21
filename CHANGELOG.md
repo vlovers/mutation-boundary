@@ -8,6 +8,7 @@
 - Limit retained canonical key/row data to 32 MiB **per snapshot across selected tables**; this intentionally rejects some formerly accepted large selections. It is **not** a peak memory or driver-buffer bound (PR #56).
 - Reject getter and symbol-keyed custom adapter rows before `excludeColumns` projection can call unsafe getters; extend regressions for non-enumerable properties (PR #60).
 - Expand disposable PostgreSQL coverage of committed writes, rollback, pool reuse, JSONB, Unicode, bytea, NULL and composite identifiers (PRs #59, #61).
+- Gate CI and trusted publishing on a strict packed-file allowlist, checked exports, Node engines and actual manifest version; unit-test failure modes (release-readiness PR).
 
 **Compatibility review:** Public TypeScript/API shapes remain unchanged. The 32 MiB aggregate cap and stricter adapter-property validation are behavioral restrictions requiring explicit review before publishing v0.6.0. Existing npm `latest` remains v0.5.0; green CI is not publication or artifact provenance. Never use MutationBoundary against production databases.
 
