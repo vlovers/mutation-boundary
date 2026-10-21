@@ -8,7 +8,7 @@ const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
 export function verifyPackageContents(manifest, entries) {
   assert.equal(manifest.name, 'mutation-boundary');
-  assert.match(manifest.version, /^\\d+\\.\\d+\\.\\d+$/);
+  assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
   assert.equal(manifest.private, undefined);
   assert.equal(manifest.type, 'module');
   assert.equal(manifest.main, './dist/index.js');
@@ -24,7 +24,7 @@ export function verifyPackageContents(manifest, entries) {
   for (const path of files) {
     assert.ok(
       ['package.json', 'README.md', 'LICENSE'].includes(path) ||
-      /^dist\\/[a-z0-9-]+\\.(?:js|d\\.ts)$/.test(path),
+      /^dist\/[a-z0-9-]+\.(?:js|d\.ts)$/.test(path),
       'unexpected packed file: ' + path,
     );
   }
