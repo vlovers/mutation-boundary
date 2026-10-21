@@ -63,7 +63,7 @@ The v0.3.0 GitHub release and successful publish workflow are recorded on 2026-1
 - [x] Document field-tested integration limitations, including Jest CommonJS native ESM import and Estima's verified Bun consumer (see [compatibility evidence](docs/COMPATIBILITY.md)); further field reports remain welcome.
 - [x] Keep dependency-free runtime and existing safety guardrails; no speculative framework helpers.
 
-## v0.6.0 — reliability review (proposed, not promised)
+## Released source — v0.6.0 reliability hardening
 
 - [x] Characterize PostgreSQL/action failure and cleanup precedence, preserve original failure as cleanup error cause (PRs #49–#52), and verify post-action budget failure cleanup (PR #57).
 - [x] Add invalid identifier/key/filter/projection/baseline regressions proving action is not invoked and a pool client is released (PR #53).
@@ -72,9 +72,9 @@ The v0.3.0 GitHub release and successful publish workflow are recorded on 2026-1
 - [x] Preserve existing API while fixing mutable-result false negatives and redundant encoding (PRs #54–#55), and cap retained canonical snapshot data to 32 MiB (PR #56). 
 - [ ] Audit peak process memory, driver allocations and larger valid workloads: aggregate retained-bytes cap is not an overall RSS limit.
 
-## v0.6.0 release review gate (candidate; publishing pending approval)
+## v0.6.0 release verification (tag and publish workflow succeeded)
 
-This is a candidate checklist, **not** evidence that v0.6.0 is published:
+The v0.6.0 tag points to commit `6dad293`, with successful tag CI and npm publish workflow. GitHub Release notes and independently installing the published artifact remain separate verification tasks:
 
 - [x] Regression coverage for error precedence, release cleanup and malformed snapshots (#49–#53, #57–#59).
 - [x] Snapshot row aliasing, single-pass canonical data and total retained-data cap (#54–#56).
@@ -83,7 +83,8 @@ This is a candidate checklist, **not** evidence that v0.6.0 is published:
 - [x] Document behavioral backward-compatibility review of the **32 MiB retained-data cap** and stricter projection validation in [v0.6 release review](docs/V060_RELEASE_REVIEW.md); maintainer acceptance remains required.
 - [ ] Verify final source SHA on CI with isolated PostgreSQL, NestJS/TypeORM, Jest/Vitest, `npm pack` and clean external Node/TypeScript/PostgreSQL consumer.
 - [x] Install automated `npm pack --json --dry-run` allowlist checks and manifest validation in CI and publish workflow (PR #63 candidate); requires final tagged release review before publishing.
-- [ ] Confirm GitHub tag/release, provenance-enabled Trusted Publishing and npm registry contents after explicit maintainer approval. No automatic v0.6.0 publish.
+- [x] Confirm immutable v0.6.0 tag and successful Trusted Publishing GitHub workflow (run 39586698688).
+- [ ] Publish GitHub Release notes and independently install and verify the npm v0.6.0 registry artifact and provenance metadata.
 
 Limitations remain: the cap does not constrain driver query memory or peak process RSS; snapshots cannot prove absence of transient/rolled-back writes, unselected table changes or concurrent interference.
 
