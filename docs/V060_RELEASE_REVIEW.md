@@ -1,12 +1,12 @@
-# v0.6.0 compatibility and release decision (unreleased)
+# v0.6.0 compatibility and release verification
 
 ## Status and evidence
 
-Published npm `latest` is **v0.5.0**. The `main` branch contains proposed v0.6.0 reliability changes, but its package manifest remains at `0.5.0`; do **not** claim this is published v0.6.0. CI verifies the current source and independently installs published v0.5.0. Running CI is not an npm release.
+Tag `v0.6.0` points to `6dad293698f2230312659102c8462d7571953f34`. The tagged CI and npm Trusted Publishing workflow [succeeded](https://github.com/vlovers/mutation-boundary/actions/runs/39586698688). This confirms the workflow completed, not independent registry tarball provenance. The GitHub Release page and independent npm v0.6.0 consumer verification are separate follow-ups.
 
 ## Behavioral compatibility review
 
-| Case | Published v0.5.0 | Unreleased main | Recommended action |
+| Case | Published v0.5.0 | v0.6.0 | Recommended action |
 | --- | --- | --- | --- |
 | Normal `pg.Client` and `pg.Pool` result rows within budget | Net-state comparison | Same public API, with stricter internal snapshot handling | Keep existing integration tests |
 | Custom adapter reuses and mutates the same row objects | May miss a surviving mutation due to object aliasing | Stores canonical row strings; detects net updates | Upgrade recommended after consumer verification |
@@ -14,7 +14,7 @@ Published npm `latest` is **v0.5.0**. The `main` branch contains proposed v0.6.0
 | Custom `excludeColumns` adapter row with accessors or symbol keys | Earlier projection could invoke getters / omit symbols | Rejects before action; does not execute getter | Return ordinary plain data rows or normalize your adapter |
 | Pool `release()` fails after a primary error | Cleanup error wins | Same thrown cleanup error, optional non-enumerable `cause` retains prior failure | Read `cause` diagnostically; do not rely on serialized exception contents |
 
-**Semver decision:** The public API signatures are unchanged, but accepted inputs are narrower because of fail-closed validations and an aggregate size cap. Since the package is still pre-1.0, a minor version candidate is proposed, **not automatically approved**. Consumer review must explicitly accept these behavior changes before a tag.
+**Semver decision:** The public API signatures are unchanged, but accepted inputs are narrower because of fail-closed validations and an aggregate size cap. The package is pre-1.0 and v0.6.0 was tagged/published; consumers should review these behavior changes before upgrading.
 
 ## Memory and concurrency caveats
 
