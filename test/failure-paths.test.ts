@@ -382,3 +382,35 @@ test('reused mutable adapter row objects cannot rewrite the baseline snapshot', 
   });
   assert.equal(reads, 2);
 });
+
+
+test('canonical snapshot serializer visits each selected row once per snapshot', async () => {
+  let prototypeChecks = 0;
+  let readCount = 0;
+  const source = { id: 1, payload: { state: 'old' } };
+  const wrapped = new Proxy(source, {
+    getPrototypeOf(target) {
+      prototypeChecks++;
+      return Reflect.getPrototypeOf(target);
+    },
+  });
+  const db = {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) {
+        return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      }
+      readCount++;
+      return [wrapped];
+    },
+  };
+  await assert.rejects(assertNoMutation({
+    db, tables, safety,
+    action: async () => { source.payload.state = 'new'; },
+  }), (error: unknown) => {
+    assert.ok(error instanceof MutationBoundaryError);
+    assert.equal(error.counts[0]?.updated, 1);
+    return true;
+  });
+  assert.equal(readCount, 2);
+  assert.equal(prototypeChecks, 6, 'one serializer pass causes three prototype checks per snapshot');
+});
