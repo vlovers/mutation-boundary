@@ -299,3 +299,61 @@ test('aggregate snapshot cap applies across selected tables before action', asyn
   assert.equal(reads, 2, 'the second selected table triggers the shared cap');
   assert.equal(actionCalled, false);
 });
+
+
+test('excluded-column projection rejects accessors without evaluating them', async () => {
+  let invoked = 0;
+  const row = { id: 1, state: 'safe' } as Row;
+  Object.defineProperty(row, 'excluded', {
+    enumerable: true,
+    get() { invoked++; throw new Error('untrusted getter executed'); },
+  });
+  let actionCalls = 0;
+  const db = {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) {
+        return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      }
+      return [row];
+    },
+  };
+  await assert.rejects(assertNoMutation({
+    db, tables: [{ name: 'tasks', key: 'id', excludeColumns: ['excluded'] }],
+    safety, action: async () => { actionCalls++; },
+  }), /unsupported snapshot accessor in table tasks/);
+  assert.equal(invoked, 0);
+  assert.equal(actionCalls, 0);
+});
+
+test('excluded-column projection rejects symbol-keyed rows before action', async () => {
+  const row: Row = { id: 1, state: 'safe', [Symbol('concealed')]: 'private' };
+  let actionCalls = 0;
+  const db = {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) {
+        return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      }
+      return [row];
+    },
+  };
+  await assert.rejects(assertNoMutation({
+    db, tables: [{ name: 'tasks', key: 'id', excludeColumns: ['state'] }],
+    safety, action: async () => { actionCalls++; },
+  }), /unsupported snapshot symbol keys in table tasks/);
+  assert.equal(actionCalls, 0);
+});
+
+test('excluded-column projection retains supported ordinary rows and detects selected updates', async () => {
+  const before = [{ id: 1, state: 'before', ignored: 10 }];
+  const after = [{ id: 1, state: 'after', ignored: 20 }];
+  await assert.rejects(assertNoMutation({
+    db: fakeDb(before, after),
+    tables: [{ name: 'tasks', key: 'id', excludeColumns: ['ignored'] }],
+    safety, action: async () => {},
+  }), MutationBoundaryError);
+  await assertNoMutation({
+    db: fakeDb(before, after),
+    tables: [{ name: 'tasks', key: 'id', excludeColumns: ['state', 'ignored'] }],
+    safety, action: async () => {},
+  });
+});
