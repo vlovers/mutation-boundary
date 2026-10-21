@@ -162,7 +162,10 @@ async function takeBoundarySnapshot(
       if (parts.some(part => part == null)) throw new Error(`MutationBoundary: missing row key in table ${table.name}`);
       const id = stable(parts);
       if (values.has(id)) throw new Error(`MutationBoundary: duplicate row key in table ${table.name}`);
-      values.set(id, comparisonRow);
+      // Keep the baseline independent from mutable result objects. Some query
+      // adapters reuse row objects across calls; storing their references can
+      // otherwise turn a real UPDATE into a false no-op after the action.
+      values.set(id, structuredClone(comparisonRow));
     }
     snapshot.set(table.name, values);
   }
