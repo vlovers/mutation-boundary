@@ -48,3 +48,11 @@ have completed. For the release process, see [RELEASING](RELEASING.md).
 ## Aggregate snapshot budget (unreleased main)
 
 Per-value/collection and row-count checks are supplemented by a 32 MiB cap on retained canonical key+row string bytes **per snapshot across all selected tables** (PR #56). Both baseline and post-action snapshots enforce it; a post-action failure still releases pinned pool connections (PR #57). This is a change in accepted input size: tests that previously selected very large snapshots must narrow selection or projection. It does not bound driver query-result allocation, transient serializer memory, or peak process RSS. It is not a production OOM defense.
+
+
+## Failure-path and cleanup evidence (unreleased v0.6 main)
+
+The disposable PostgreSQL lifecycle regression suite covers a committed INSERT, UPDATE and DELETE, plus transaction rollback and a post-action row-cap failure. The library checks **net** changes to selected tables: a rolled-back transaction does not count as a persisted mutation. A committed mutation can take precedence over an action exception, and resulting `MutationBoundaryError` exposes aggregate counts, not row values. The snapshot connection should be released even when validation or a follow-up query fails; the pooled database remains reusable.
+
+These are regression scenarios, **not** claims of automatic transaction management, protection against concurrent writers, detection of transient writes or control over PostgreSQL driver peak allocations.
+
