@@ -60,3 +60,9 @@ These are regression scenarios, **not** claims of automatic transaction manageme
 ## Custom query adapters and projection safety (unreleased v0.6)
 
 When `excludeColumns` is used, MutationBoundary rejects accessor properties and symbol-keyed properties on returned row objects before constructing the selected projection. This avoids invoking untrusted getters while building snapshots, including getters on excluded fields, and prevents hidden unsupported values from silently bypassing validation. Plain data rows from `pg` remain supported. This is fail-closed behavior for custom adapters, not an ORM integration guarantee.
+
+## PostgreSQL data-integrity regression matrix (unreleased v0.6)
+
+Disposable PostgreSQL integration tests exercise JSONB object-field reordering versus nested value mutations, Unicode text transitions, bytea changes, NULL-to-text transitions, and composite-key identity changes. A change to a non-key column is an UPDATE, while replacing one component of a composite key is a DELETE plus INSERT in net-state diagnostics. These tests use real PostgreSQL; they are not a blanket assertion that every custom parser, extension type or transaction isolation mode is supported.
+
+Mutation reports deliberately omit keys and row values. Snapshot selection remains bounded by the configured row limit and the internal 32 MiB retained-canonical-data limit; neither measure caps driver buffers or concurrent writers.
