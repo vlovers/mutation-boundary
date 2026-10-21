@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased — v0.6.0 reliability candidate (not published)
+
+- Preserve the original verification/action failure as a non-enumerable `cause` on a failed pool-client release when the release error has no existing cause, without changing thrown release-error identity or precedence (PRs #49–#52).
+- Reject invalid snapshot selection and duplicate keys before invoking the action; cover baseline and post-action failure cleanup (PRs #53, #57–#59).
+- Correct false negatives when custom query adapters reuse mutable row objects; retain validated canonical strings instead of object references and serialize each row once (PRs #54–#55).
+- Limit retained canonical key/row data to 32 MiB **per snapshot across selected tables**; this intentionally rejects some formerly accepted large selections. It is **not** a peak memory or driver-buffer bound (PR #56).
+- Reject getter and symbol-keyed custom adapter rows before `excludeColumns` projection can call unsafe getters; extend regressions for non-enumerable properties (PR #60).
+- Expand disposable PostgreSQL coverage of committed writes, rollback, pool reuse, JSONB, Unicode, bytea, NULL and composite identifiers (PRs #59, #61).
+
+**Compatibility review:** Public TypeScript/API shapes remain unchanged. The 32 MiB aggregate cap and stricter adapter-property validation are behavioral restrictions requiring explicit review before publishing v0.6.0. Existing npm `latest` remains v0.5.0; green CI is not publication or artifact provenance. Never use MutationBoundary against production databases.
+
+
 ## 0.5.0 — adoption verification (published 2026-10-21)
 
 - Verify published v0.4.0 through an independently installed packed-tarball ESM consumer using real disposable PostgreSQL (PR #40).
