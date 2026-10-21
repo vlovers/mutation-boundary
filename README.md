@@ -15,7 +15,7 @@ A verified real-world consumer is [Estima PR #12](https://github.com/vlovers/est
 See [the real-world failed-request regression walkthrough](docs/EXAMPLE.md) for a before/after test pattern and redacted failure output.
 
 
-> **Unreleased v0.6 safety change (proposed):** Canonical snapshot strings are limited to 32 MiB per snapshot across all selected tables. This bounds retained canonical data, **not** database-driver buffers, query result memory, or overall peak RSS. A large selection may now fail closed before `action()`; narrow your table selection or projection. The limit is not configurable.
+> **Unreleased v0.6 safety change (merged to main, not published):** Canonical snapshot strings are limited to 32 MiB per snapshot across all selected tables. This bounds retained canonical data, **not** database-driver buffers, query result memory, or overall peak RSS. A large selection may now fail closed before `action()`; narrow your table selection or projection. The limit is not configurable.
 
 ## Why use it?
 
