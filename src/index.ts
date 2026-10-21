@@ -152,8 +152,9 @@ async function takeBoundarySnapshot(
       const comparisonRow = excluded
         ? Object.fromEntries(Object.entries(row).filter(([column]) => !excluded.includes(column)))
         : row;
+      let serializedRow: string;
       try {
-        stable(comparisonRow);
+        serializedRow = stable(comparisonRow);
       } catch (error) {
         if (!(error instanceof Error) || !error.message.startsWith('MutationBoundary: ')) throw error;
         throw new Error(error.message + ` in table ${table.name}`);
@@ -163,7 +164,7 @@ async function takeBoundarySnapshot(
       const id = stable(parts);
       if (values.has(id)) throw new Error(`MutationBoundary: duplicate row key in table ${table.name}`);
       // Store only the validated canonical representation, never mutable driver rows.
-      values.set(id, stable(comparisonRow));
+      values.set(id, serializedRow);
     }
     snapshot.set(table.name, values);
   }
