@@ -414,3 +414,43 @@ test('canonical snapshot serializer visits each selected row once per snapshot',
   assert.equal(readCount, 2);
   assert.equal(prototypeChecks, 6, 'one serializer pass causes three prototype checks per snapshot');
 });
+
+
+test('post-action aggregate snapshot limit propagates and releases pooled connection', async () => {
+  const baseline = [{ id: 1, payload: 'small' }];
+  const enlarged = Array.from({ length: 41 }, (_, i) => ({
+    id: i + 1, payload: 'x'.repeat(850_000),
+  }));
+  let reads = 0;
+  let releases = 0;
+  let connects = 0;
+  let actions = 0;
+  const pool = {
+    async connect() {
+      connects++;
+      return {
+        async query(sql: string): Promise<Row[]> {
+          if (sql.includes('current_database()')) {
+            return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+          }
+          reads++;
+          return reads === 1 ? baseline : enlarged;
+        },
+        release() { releases++; },
+      };
+    },
+  };
+  await assert.rejects(assertNoMutation({
+    db: pool, tables, safety,
+    action: async () => { actions++; },
+  }), (error: unknown) => {
+    assert.ok(error instanceof Error);
+    assert.match(error.message, /snapshot total size limit exceeded \(32 MiB\) in table tasks/);
+    assert.doesNotMatch(error.message, /xxxxxx/);
+    return true;
+  });
+  assert.equal(actions, 1);
+  assert.equal(reads, 2);
+  assert.equal(connects, 1);
+  assert.equal(releases, 1);
+});
