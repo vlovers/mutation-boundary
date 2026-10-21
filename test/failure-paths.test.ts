@@ -507,3 +507,59 @@ test('post-action snapshot budget rejection retains action error when cleanup it
   assert.equal(reads, 2);
   assert.equal(releases, 1);
 });
+
+
+test('baseline snapshot query rejection skips action and releases exactly once', async () => {
+  const failure = new Error('injected baseline query failure');
+  let reads = 0;
+  let releases = 0;
+  let actionRuns = 0;
+  const pool = {
+    async connect() {
+      return {
+        async query(sql: string): Promise<Row[]> {
+          if (sql.includes('current_database()')) {
+            return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+          }
+          reads++;
+          throw failure;
+        },
+        release() { releases++; },
+      };
+    },
+  };
+  await assert.rejects(assertNoMutation({
+    db: pool, tables, safety, action: async () => { actionRuns++; },
+  }), received => received === failure);
+  assert.equal(reads, 1);
+  assert.equal(actionRuns, 0);
+  assert.equal(releases, 1);
+});
+
+test('a successful action followed by failed after-snapshot returns the query error', async () => {
+  const failure = new Error('injected after-snapshot failure');
+  let reads = 0;
+  let releases = 0;
+  let actionRuns = 0;
+  const pool = {
+    async connect() {
+      return {
+        async query(sql: string): Promise<Row[]> {
+          if (sql.includes('current_database()')) {
+            return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+          }
+          reads++;
+          if (reads === 2) throw failure;
+          return [{ id: 1, payload: 'baseline' }];
+        },
+        release() { releases++; },
+      };
+    },
+  };
+  await assert.rejects(assertNoMutation({
+    db: pool, tables, safety, action: async () => { actionRuns++; },
+  }), received => received === failure);
+  assert.equal(reads, 2);
+  assert.equal(actionRuns, 1);
+  assert.equal(releases, 1);
+});
