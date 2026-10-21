@@ -20,15 +20,15 @@ The current implementation treats an object with only `connect()` as a pool and 
 This is a documented limitation, not a new public API or promise of compatibility with arbitrary custom pool shims.
 
 
-## Cleanup error precedence (v0.6 unreleased main)
+## Cleanup error precedence (v0.6)
 
 `assertNoMutation()` releases checked-out pool clients following verification. When `release()` throws, that error still takes precedence over a prior action or snapshot error.
 This is now characterized by [PR #50](https://github.com/vlovers/mutation-boundary/pull/50).
 
-On the unreleased main branch (PR #52), if the release error is an `Error` without an existing `cause`, the earlier failure is retained as a non-enumerable `cause`. A release failure can indicate a damaged connection or
+Starting with v0.6.0 (PR #52), if the release error is an `Error` without an existing `cause`, the earlier failure is retained as a non-enumerable `cause`. A release failure can indicate a damaged connection or
 an invalid custom adapter, so silently suppressing it would also be dangerous.
 
-**Implemented in unreleased main, not yet shipped to npm:** Preserve the exact thrown cleanup error and its precedence, but attach the prior verification failure as a non-enumerable `cause` only when the cleanup error is an `Error` without its own cause. This retains `instanceof`/identity while improving diagnostics. Existing cleanup causes remain untouched. This is a narrowly scoped behavior addition, not a new public method. Logging exception chains may expose caller-owned details; do not publish unsanitized traces.
+**Implemented in v0.6.0:** Preserve the exact thrown cleanup error and its precedence, but attach the prior verification failure as a non-enumerable `cause` only when the cleanup error is an `Error` without its own cause. This retains `instanceof`/identity while improving diagnostics. Existing cleanup causes remain untouched. This is a narrowly scoped behavior addition, not a new public method. Logging exception chains may expose caller-owned details; do not publish unsanitized traces.
 
 ## Unsupported or not proven
 
@@ -45,19 +45,19 @@ Changes after the published 0.4.0 tag are **unreleased**. Do not use v0.5.0
 installation instructions until an actual tagged release and npm publication
 have completed. For the release process, see [RELEASING](RELEASING.md).
 
-## Aggregate snapshot budget (unreleased main)
+## Aggregate snapshot budget (v0.6.0)
 
 Per-value/collection and row-count checks are supplemented by a 32 MiB cap on retained canonical key+row string bytes **per snapshot across all selected tables** (PR #56). Both baseline and post-action snapshots enforce it; a post-action failure still releases pinned pool connections (PR #57). This is a change in accepted input size: tests that previously selected very large snapshots must narrow selection or projection. It does not bound driver query-result allocation, transient serializer memory, or peak process RSS. It is not a production OOM defense.
 
 
-## Failure-path and cleanup evidence (unreleased v0.6 main)
+## Failure-path and cleanup evidence (v0.6.0)
 
 The disposable PostgreSQL lifecycle regression suite covers a committed INSERT, UPDATE and DELETE, plus transaction rollback and a post-action row-cap failure. The library checks **net** changes to selected tables: a rolled-back transaction does not count as a persisted mutation. A committed mutation can take precedence over an action exception, and resulting `MutationBoundaryError` exposes aggregate counts, not row values. The snapshot connection should be released even when validation or a follow-up query fails; the pooled database remains reusable.
 
 These are regression scenarios, **not** claims of automatic transaction management, protection against concurrent writers, detection of transient writes or control over PostgreSQL driver peak allocations.
 
 
-## Custom query adapters and projection safety (unreleased v0.6)
+## Custom query adapters and projection safety (v0.6.0)
 
 When `excludeColumns` is used, MutationBoundary rejects accessor properties and symbol-keyed properties on returned row objects before constructing the selected projection. This avoids invoking untrusted getters while building snapshots, including getters on excluded fields, and prevents hidden unsupported values from silently bypassing validation. Plain data rows from `pg` remain supported. This is fail-closed behavior for custom adapters, not an ORM integration guarantee.
 
