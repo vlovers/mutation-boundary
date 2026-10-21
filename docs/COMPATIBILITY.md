@@ -1,4 +1,4 @@
-# Tested integration matrix (v0.5 released; v0.6 in development)
+# Tested integration matrix (v0.6.0)
 
 MutationBoundary is a PostgreSQL **net-state** assertion intended only for disposable,
 isolated, quiescent test databases. These are test observations, not universal
@@ -41,9 +41,7 @@ an invalid custom adapter, so silently suppressing it would also be dangerous.
 
 ## Release boundaries
 
-Changes after the published 0.4.0 tag are **unreleased**. Do not use v0.5.0
-installation instructions until an actual tagged release and npm publication
-have completed. For the release process, see [RELEASING](RELEASING.md).
+The v0.6.0 source tag and npm publish workflow have completed successfully on commit `6dad293`. For exact release evidence and remaining independent registry provenance checks, see [v0.6 release review](V060_RELEASE_REVIEW.md). For future releases, see [RELEASING](RELEASING.md).
 
 ## Aggregate snapshot budget (v0.6.0)
 
@@ -61,7 +59,7 @@ These are regression scenarios, **not** claims of automatic transaction manageme
 
 When `excludeColumns` is used, MutationBoundary rejects accessor properties and symbol-keyed properties on returned row objects before constructing the selected projection. This avoids invoking untrusted getters while building snapshots, including getters on excluded fields, and prevents hidden unsupported values from silently bypassing validation. Plain data rows from `pg` remain supported. This is fail-closed behavior for custom adapters, not an ORM integration guarantee.
 
-## PostgreSQL data-integrity regression matrix (unreleased v0.6)
+## PostgreSQL data-integrity regression matrix (v0.6.0)
 
 Disposable PostgreSQL integration tests exercise JSONB object-field reordering versus nested value mutations, Unicode text transitions, bytea changes, NULL-to-text transitions, and composite-key identity changes. A change to a non-key column is an UPDATE, while replacing one component of a composite key is a DELETE plus INSERT in net-state diagnostics. These tests use real PostgreSQL; they are not a blanket assertion that every custom parser, extension type or transaction isolation mode is supported.
 
