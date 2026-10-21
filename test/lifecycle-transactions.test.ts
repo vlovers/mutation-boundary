@@ -164,3 +164,77 @@ test('pool exhaustion times out, releases snapshot connection, and subsequently 
     finally { await pool.end(); }
   }
 });
+
+
+test('committed UPDATE and DELETE survive action exceptions and report aggregate counts', async () => {
+  const pool = new pg.Pool({ connectionString: connectionString(), max: 2, connectionTimeoutMillis: 1000 });
+  try {
+    await pool.query('CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
+    await pool.query("INSERT INTO boundary_lifecycle_probe VALUES (1, 'before'), (2, 'before')");
+    await assert.rejects(assertNoMutation({
+      db: pool, tables, safety,
+      action: async () => {
+        await pool.query("UPDATE boundary_lifecycle_probe SET value = 'private-after' WHERE id = 1");
+        await pool.query('DELETE FROM boundary_lifecycle_probe WHERE id = 2');
+        throw new Error('caller-owned-private-error');
+      },
+    }), (error: unknown) => {
+      assert.ok(error instanceof MutationBoundaryError);
+      assert.deepEqual(error.counts, [{ table: 'boundary_lifecycle_probe', inserted: 0, updated: 1, deleted: 1 }]);
+      assert.doesNotMatch(error.message + JSON.stringify(error), /private-after|caller-owned-private-error/);
+      return true;
+    });
+    assert.equal(pool.idleCount, pool.totalCount);
+    await assertNoMutation({ db: pool, tables, safety, action: async () => {} });
+  } finally {
+    try { await pool.query('DROP TABLE IF EXISTS boundary_lifecycle_probe'); }
+    finally { await pool.end(); }
+  }
+});
+
+test('transaction rollback after a rejected action leaves no detected net changes', async () => {
+  const pool = new pg.Pool({ connectionString: connectionString(), max: 2, connectionTimeoutMillis: 1000 });
+  const sentinel = new Error('original action failure');
+  try {
+    await pool.query('CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
+    await assert.rejects(assertNoMutation({
+      db: pool, tables, safety,
+      action: async () => {
+        const writer = await pool.connect();
+        try {
+          await writer.query('BEGIN');
+          await writer.query("INSERT INTO boundary_lifecycle_probe VALUES (1, 'transient')");
+          await writer.query('ROLLBACK');
+          throw sentinel;
+        } finally {
+          writer.release();
+        }
+      },
+    }), (error: unknown) => error === sentinel);
+    const result = await pool.query('SELECT count(*)::integer AS n FROM boundary_lifecycle_probe');
+    assert.equal(result.rows[0]?.n, 0);
+    assert.equal(pool.idleCount, pool.totalCount);
+  } finally {
+    try { await pool.query('DROP TABLE IF EXISTS boundary_lifecycle_probe'); }
+    finally { await pool.end(); }
+  }
+});
+
+test('unsupported post-action PostgreSQL row cap fails and pool remains reusable', async () => {
+  const pool = new pg.Pool({ connectionString: connectionString(), max: 2, connectionTimeoutMillis: 1000 });
+  try {
+    await pool.query('CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
+    await assert.rejects(assertNoMutation({
+      db: pool, tables, safety, maxRowsPerTable: 1,
+      action: async () => {
+        await pool.query("INSERT INTO boundary_lifecycle_probe VALUES (1, 'x'), (2, 'y')");
+      },
+    }), /snapshot row limit exceeded/);
+    assert.equal(pool.idleCount, pool.totalCount);
+    await assertNoMutation({ db: pool, tables, safety, maxRowsPerTable: 2, action: async () => {} });
+    assert.equal(pool.idleCount, pool.totalCount);
+  } finally {
+    try { await pool.query('DROP TABLE IF EXISTS boundary_lifecycle_probe'); }
+    finally { await pool.end(); }
+  }
+});
