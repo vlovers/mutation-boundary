@@ -18,6 +18,9 @@ type RowChange = {
 
 export type TableSpec = { name: string; key: string | readonly string[]; where?: { column: string; equals: string | number | boolean | null }; includeColumns?: readonly string[]; excludeColumns?: readonly string[] };
 type Snapshot = Map<string, Map<string, string>>;
+// Budget retained canonical strings per snapshot across all selected tables.
+// This is not a bound on driver buffers or peak process memory.
+const MAX_SNAPSHOT_BYTES = 32 * 1024 * 1024;
 const identifier = (value: string) => {
   if (!/^[a-z_][a-z_0-9]*$/i.test(value)) {
     throw new Error('MutationBoundary: unsafe SQL identifier');
@@ -107,6 +110,7 @@ async function takeBoundarySnapshot(
   if (!Number.isSafeInteger(maxRowsPerTable) || maxRowsPerTable < 1 || maxRowsPerTable > 50000) throw new Error('MutationBoundary: invalid snapshot limit');
   const snapshot: Snapshot = new Map();
   const seenTables = new Set<string>();
+  let retainedBytes = 0;
   for (const table of tables) {
     if (seenTables.has(table.name)) throw new Error('MutationBoundary: duplicate table selection');
     seenTables.add(table.name);
@@ -163,6 +167,10 @@ async function takeBoundarySnapshot(
       if (parts.some(part => part == null)) throw new Error(`MutationBoundary: missing row key in table ${table.name}`);
       const id = stable(parts);
       if (values.has(id)) throw new Error(`MutationBoundary: duplicate row key in table ${table.name}`);
+      retainedBytes += Buffer.byteLength(id, 'utf8') + Buffer.byteLength(serializedRow, 'utf8');
+      if (retainedBytes > MAX_SNAPSHOT_BYTES) {
+        throw new Error(`MutationBoundary: snapshot total size limit exceeded (32 MiB) in table ${table.name}`);
+      }
       // Store only the validated canonical representation, never mutable driver rows.
       values.set(id, serializedRow);
     }
