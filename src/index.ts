@@ -17,7 +17,7 @@ type RowChange = {
 };
 
 export type TableSpec = { name: string; key: string | readonly string[]; where?: { column: string; equals: string | number | boolean | null }; includeColumns?: readonly string[]; excludeColumns?: readonly string[] };
-type Snapshot = Map<string, Map<string, Record<string, unknown>>>;
+type Snapshot = Map<string, Map<string, string>>;
 const identifier = (value: string) => {
   if (!/^[a-z_][a-z_0-9]*$/i.test(value)) {
     throw new Error('MutationBoundary: unsafe SQL identifier');
@@ -145,7 +145,7 @@ async function takeBoundarySnapshot(
     const rows = Array.isArray(result) ? result : result.rows;
     if (!Array.isArray(rows)) throw new Error('MutationBoundary: unsupported query result');
     if (rows.length > maxRowsPerTable) throw new Error(`MutationBoundary: snapshot row limit exceeded for table ${table.name} (limit ${maxRowsPerTable})`);
-    const values = new Map<string, Record<string, unknown>>();
+    const values = new Map<string, string>();
     for (const row of rows) {
       // Validate the full driver value before invoking the action.
       // Otherwise unsupported data could be discovered only after writes.
@@ -162,10 +162,8 @@ async function takeBoundarySnapshot(
       if (parts.some(part => part == null)) throw new Error(`MutationBoundary: missing row key in table ${table.name}`);
       const id = stable(parts);
       if (values.has(id)) throw new Error(`MutationBoundary: duplicate row key in table ${table.name}`);
-      // Keep the baseline independent from mutable result objects. Some query
-      // adapters reuse row objects across calls; storing their references can
-      // otherwise turn a real UPDATE into a false no-op after the action.
-      values.set(id, structuredClone(comparisonRow));
+      // Store only the validated canonical representation, never mutable driver rows.
+      values.set(id, stable(comparisonRow));
     }
     snapshot.set(table.name, values);
   }
@@ -179,13 +177,11 @@ function diffBoundarySnapshots(before: Snapshot, after: Snapshot): RowChange[] {
     if (!newRows) throw new Error('MutationBoundary: incomplete after snapshot');
     for (const [key, previous] of oldRows) {
       const current = newRows.get(key);
-      if (!current) changes.push({ table, key, kind: 'deleted', before: previous });
-      else if (stable(previous) !== stable(current)) changes.push({
-        table, key, kind: 'updated', before: previous, after: current,
-      });
+      if (current === undefined) changes.push({ table, key, kind: 'deleted' });
+      else if (previous !== current) changes.push({ table, key, kind: 'updated' });
     }
     for (const [key, current] of newRows) if (!oldRows.has(key)) {
-      changes.push({ table, key, kind: 'inserted', after: current });
+      changes.push({ table, key, kind: 'inserted' });
     }
   }
   return changes;
