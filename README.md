@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![npm version](https://img.shields.io/npm/v/mutation-boundary.svg)](https://www.npmjs.com/package/mutation-boundary)
 
-> **Latest published version: v0.5.0 (release candidate in GitHub: v0.6.0, not published).** [GitHub release](https://github.com/vlovers/mutation-boundary/releases/tag/v0.5.0) · [npm package](https://www.npmjs.com/package/mutation-boundary/v/0.5.0). The API remains experimental; use only isolated disposable test databases.
+> **Published package: v0.6.0** (npm Trusted Publishing workflow succeeded; [workflow evidence](https://github.com/vlovers/mutation-boundary/actions/runs/39586698688)). [npm version](https://www.npmjs.com/package/mutation-boundary/v/0.6.0) · [release tag](https://github.com/vlovers/mutation-boundary/tree/v0.6.0). The API remains experimental; use only isolated disposable test databases.
 
 An HTTP endpoint returns 500, an authorization check rejects a request, or a background job fails. **Did any committed row changes survive?** MutationBoundary compares the net state of selected PostgreSQL tables before and after an awaited action and fails the test when unexpected INSERT, UPDATE or DELETE changes remain.
 
@@ -15,7 +15,7 @@ A verified real-world consumer is [Estima PR #12](https://github.com/vlovers/est
 See [the real-world failed-request regression walkthrough](docs/EXAMPLE.md) for a before/after test pattern and redacted failure output.
 
 
-> **v0.6.0 release candidate (not yet published):** Canonical snapshot strings are limited to 32 MiB per snapshot across all selected tables. This bounds retained canonical data, **not** database-driver buffers, query result memory, or overall peak RSS. A large selection may now fail closed before `action()`; narrow your table selection or projection. The limit is not configurable.
+> **v0.6.0 compatibility change:** Canonical snapshot strings are limited to 32 MiB per snapshot across all selected tables. This bounds retained canonical data, **not** database-driver buffers, query result memory, or overall peak RSS. A large selection may now fail closed before `action()`; narrow your table selection or projection. The limit is not configurable.
 
 ## Why use it?
 
@@ -26,7 +26,7 @@ Use focused SQL assertions when only a few specific fields matter. MutationBound
 ## Installation
 
 ```sh
-npm install -D mutation-boundary@^0.5.0
+npm install -D mutation-boundary@^0.6.0
 ```
 
 ## Example
