@@ -44,7 +44,7 @@ try {
     assert.equal(packageJson.main, './dist/index.js');
     assert.equal(packageJson.types, './dist/index.d.ts');
     assert.equal(packageJson.name, 'mutation-boundary');
-    assert.equal(packageJson.version, '0.5.0', 'unreleased source package must not be retagged');
+    assert.equal(packageJson.version, JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version, 'packed version must match source manifest');
     assert.equal(packageJson.type, 'module');
     assert.equal(packageJson.exports?.['.']?.types, './dist/index.d.ts');
     assert.equal(packageJson.exports?.['.']?.default, './dist/index.js');
