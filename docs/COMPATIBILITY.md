@@ -1,4 +1,4 @@
-# Tested integration matrix (v0.5 development)
+# Tested integration matrix (v0.5 released; v0.6 in development)
 
 MutationBoundary is a PostgreSQL **net-state** assertion intended only for disposable,
 isolated, quiescent test databases. These are test observations, not universal
@@ -20,17 +20,15 @@ The current implementation treats an object with only `connect()` as a pool and 
 This is a documented limitation, not a new public API or promise of compatibility with arbitrary custom pool shims.
 
 
-## Cleanup error precedence (v0.6 evaluation)
+## Cleanup error precedence (v0.6 unreleased main)
 
-`assertNoMutation()` currently runs `release()` in a `finally` block for a checked-out pool client.
-If `release()` itself throws, its error replaces a prior action or snapshot error.
+`assertNoMutation()` releases checked-out pool clients following verification. When `release()` throws, that error still takes precedence over a prior action or snapshot error.
 This is now characterized by [PR #50](https://github.com/vlovers/mutation-boundary/pull/50).
 
-Do **not** assume both exceptions will be returned, or that the earlier exception is
-available through `cause`. A release failure can indicate a damaged connection or
+On the unreleased main branch (PR #52), if the release error is an `Error` without an existing `cause`, the earlier failure is retained as a non-enumerable `cause`. A release failure can indicate a damaged connection or
 an invalid custom adapter, so silently suppressing it would also be dangerous.
 
-**Proposed v0.6 change (unreleased):** Preserve the exact thrown cleanup error and its precedence, but attach the prior verification failure as a non-enumerable `cause` only when the cleanup error is an `Error` without its own cause. This retains `instanceof`/identity while improving diagnostics. Existing cleanup causes remain untouched. This is a narrowly scoped behavior addition, not a new public method. Logging exception chains may expose caller-owned details; do not publish unsanitized traces.
+**Implemented in unreleased main, not yet shipped to npm:** Preserve the exact thrown cleanup error and its precedence, but attach the prior verification failure as a non-enumerable `cause` only when the cleanup error is an `Error` without its own cause. This retains `instanceof`/identity while improving diagnostics. Existing cleanup causes remain untouched. This is a narrowly scoped behavior addition, not a new public method. Logging exception chains may expose caller-owned details; do not publish unsanitized traces.
 
 ## Unsupported or not proven
 
@@ -46,3 +44,7 @@ an invalid custom adapter, so silently suppressing it would also be dangerous.
 Changes after the published 0.4.0 tag are **unreleased**. Do not use v0.5.0
 installation instructions until an actual tagged release and npm publication
 have completed. For the release process, see [RELEASING](RELEASING.md).
+
+## Aggregate snapshot budget (unreleased main)
+
+Per-value/collection and row-count checks are supplemented by a 32 MiB cap on retained canonical key+row string bytes **per snapshot across all selected tables** (PR #56). Both baseline and post-action snapshots enforce it; a post-action failure still releases pinned pool connections (PR #57). This is a change in accepted input size: tests that previously selected very large snapshots must narrow selection or projection. It does not bound driver query-result allocation, transient serializer memory, or peak process RSS. It is not a production OOM defense.
