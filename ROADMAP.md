@@ -72,6 +72,21 @@ The v0.3.0 GitHub release and successful publish workflow are recorded on 2026-1
 - [x] Preserve existing API while fixing mutable-result false negatives and redundant encoding (PRs #54–#55), and cap retained canonical snapshot data to 32 MiB (PR #56). 
 - [ ] Audit peak process memory, driver allocations and larger valid workloads: aggregate retained-bytes cap is not an overall RSS limit.
 
+## v0.6.0 release review gate (unreleased)
+
+This is a candidate checklist, **not** evidence that v0.6.0 is published:
+
+- [x] Regression coverage for error precedence, release cleanup and malformed snapshots (#49–#53, #57–#59).
+- [x] Snapshot row aliasing, single-pass canonical data and total retained-data cap (#54–#56).
+- [x] Fail-closed projection of custom adapter rows, including getter and symbol properties (#60).
+- [x] Disposable PostgreSQL value and composite-key regression suite (#61).
+- [ ] Review backward compatibility of the new **32 MiB per-snapshot retained canonical-string cap** and stricter projection validation; both may reject previously accepted inputs.
+- [ ] Verify final source SHA on CI with isolated PostgreSQL, NestJS/TypeORM, Jest/Vitest, `npm pack` and clean external Node/TypeScript/PostgreSQL consumer.
+- [ ] Inspect `npm pack --json` contents, exports, declaration types, README and this changelog against exactly the proposed release commit.
+- [ ] Confirm GitHub tag/release, provenance-enabled Trusted Publishing and npm registry contents after explicit maintainer approval. No automatic v0.6.0 publish.
+
+Limitations remain: the cap does not constrain driver query memory or peak process RSS; snapshots cannot prove absence of transient/rolled-back writes, unselected table changes or concurrent interference.
+
 ## v1.0.0 — stable contract
 
 - [ ] Public API/versioning policy, migration guidance, proven support matrix, reliability and security review.
