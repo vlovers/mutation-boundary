@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.0 — reliability candidate (not published; pending approval)
+## 0.6.0 — reliability hardening (published via npm workflow 2026-10-21)
 
 - Preserve the original verification/action failure as a non-enumerable `cause` on a failed pool-client release when the release error has no existing cause, without changing thrown release-error identity or precedence (PRs #49–#52).
 - Reject invalid snapshot selection and duplicate keys before invoking the action; cover baseline and post-action failure cleanup (PRs #53, #57–#59).
@@ -10,7 +10,7 @@
 - Expand disposable PostgreSQL coverage of committed writes, rollback, pool reuse, JSONB, Unicode, bytea, NULL and composite identifiers (PRs #59, #61).
 - Gate CI and trusted publishing on a strict packed-file allowlist, checked exports, Node engines and actual manifest version; unit-test failure modes (release-readiness PR).
 
-**Compatibility review:** Public TypeScript/API shapes remain unchanged. The 32 MiB aggregate cap and stricter adapter-property validation are behavioral restrictions requiring explicit review before publishing v0.6.0. Existing npm `latest` remains v0.5.0; green CI is not publication or artifact provenance. Never use MutationBoundary against production databases.
+**Compatibility review:** Public TypeScript/API shapes remain unchanged. The 32 MiB aggregate cap and stricter adapter-property validation intentionally reject some inputs accepted by v0.5.0. The [v0.6.0 tag](https://github.com/vlovers/mutation-boundary/tree/v0.6.0) was published through the [successful npm workflow](https://github.com/vlovers/mutation-boundary/actions/runs/39586698688). The GitHub Release page is a separate editorial step. Do not use MutationBoundary against production databases.
 
 
 ## 0.5.0 — adoption verification (published 2026-10-21)
