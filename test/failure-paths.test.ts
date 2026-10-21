@@ -355,3 +355,30 @@ test('baseline row-key ambiguity fails closed before invoking action', async () 
     assert.equal(f.stats().releases, 1, scenario.name);
   }
 });
+
+
+test('reused mutable adapter row objects cannot rewrite the baseline snapshot', async () => {
+  const row = { id: 1, status: 'before', metadata: { nested: 'original' } };
+  let reads = 0;
+  const db = {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) {
+        return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      }
+      reads++;
+      return [row];
+    },
+  };
+  await assert.rejects(assertNoMutation({
+    db, tables, safety,
+    action: async () => {
+      row.status = 'after';
+      row.metadata.nested = 'changed';
+    },
+  }), (error: unknown) => {
+    assert.ok(error instanceof MutationBoundaryError);
+    assert.deepEqual(error.counts, [{ table: 'tasks', inserted: 0, updated: 1, deleted: 0 }]);
+    return true;
+  });
+  assert.equal(reads, 2);
+});
