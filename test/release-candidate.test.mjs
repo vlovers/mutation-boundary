@@ -18,7 +18,7 @@ test('candidate package and lockfile root versions are identical', () => {
   assert.equal(pkg.version, '0.6.0');
 });
 
-test('release candidate has documentation and must not claim publication', () => {
+test('published release documentation matches v0.6 tag and install instructions', () => {
   const pkg = json('package.json');
   assert.match(text('CHANGELOG.md'), /0\.6\.0 — reliability candidate \(not published/);
   assert.match(text('README.md'), /Latest published version: v0\.5\.0/);
