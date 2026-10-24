@@ -23,6 +23,7 @@ Each finding includes severity (blocking/high, medium, low), file and location, 
 - High/blocking findings prevent approval until fixed and rechecked.
 - Medium findings require a fix or explicit rationale and follow-up issue.
 - Reviewer should not silently edit author code or certify unexecuted tests.
+- Record reviewer identity, base/head SHA, CI evidence and disposition of findings. Reassess material changes after the reviewed head SHA. AI assessment, even from a different model, is not an authorized GitHub approval.
 - Sensitive changes require a second independent review or explicit maintainer security sign-off.
 - Docs-only changes can use a lightweight independent review focusing on internal links and factual claims.
 
