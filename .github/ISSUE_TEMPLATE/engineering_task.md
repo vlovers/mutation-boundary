@@ -22,7 +22,7 @@ Link relevant files, PRs, tests and prior Issues. Distinguish implemented from v
 
 - [ ] A concrete behavior or artifact can be verified.
 - [ ] Relevant unit, integration and end-to-end evidence is specified.
-- [ ] Disposable PostgreSQL, package contracts and safe rollback are considered.
+- [ ] For database-related changes, disposable PostgreSQL and migration safety are verified; for package/API changes, compatibility and package contracts are checked. Mark non-applicable checks N/A with a reason.
 - [ ] Security, compatibility and rollback implications are evaluated.
 - [ ] Reviewer findings and exact CI evidence are recorded.
 
