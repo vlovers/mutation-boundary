@@ -18,7 +18,7 @@ npm run test:consumer
 
 These checks do **not** replace real PostgreSQL integration tests. Run `npm run test:postgres` only after independently provisioning and verifying an **isolated, disposable, quiescent** PostgreSQL database and restricted credentials. The integration suite expects `MUTATION_BOUNDARY_TEST_DATABASE_URL`, database `mutation_boundary_test`, and session role `mutation_boundary_ci`. **Matching names and an explicit confirmation flag are not proof of disposability.** Never point the suite at production, shared, or sensitive data. CI provisions its own PostgreSQL 16 service; follow [the workflow](.github/workflows/ci.yml) for its tested setup.
 
-Changes to adapters, database safety, packaging or releases may also require the TypeORM/NestJS/Jest/Vitest integration consumers and `npm run check:release`. Record which checks were actually run, which were not run, and why. A passing CI run on an earlier SHA is not evidence for a changed head.
+Changes to adapters, database safety, packaging or releases may also require the TypeORM/NestJS/Jest/Vitest integration consumers and `npm run check:release` (which includes the release-candidate tests). Record which checks were actually run, which were not run, and why. A passing CI run on an earlier SHA is not evidence for a changed head.
 
 ## Pull requests and releases
 
