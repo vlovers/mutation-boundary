@@ -36,7 +36,7 @@ npm run test:package-audit
 npm run test:consumer
 ```
 
-For actual PostgreSQL integration tests, configure **only an isolated disposable database**, following CONTRIBUTING.md and CI, before running `npm run test:postgres`. Release candidates additionally require the scripts in `npm run check:release` and the applicable CI jobs; do not claim those ran merely because this file lists them. For a published package, verify clean registry consumer installation when releasing.
+For actual PostgreSQL integration tests, configure **only an isolated disposable database**, following CONTRIBUTING.md and CI, before running `npm run test:postgres`. Release candidates additionally require `npm run check:release` (including `npm run test:release-candidate`) and the applicable CI jobs; do not claim those ran merely because this file lists them. For a published package, verify clean registry consumer installation when releasing.
 
 ## Pull request review
 
