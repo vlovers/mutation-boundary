@@ -23,7 +23,7 @@ The conditions below determine whether a change is **implemented**, **verified**
 
 - A separate reviewer examines acceptance criteria, full diff, safety boundary, public API compatibility and test value.
 - Resolve blocking correctness/security/data-safety/compatibility findings, then revalidate changed behavior.
-- PR template records reviewer, evidence, remaining risks, and rollback/restore plan where relevant.
+- PR template records reviewer identity, reviewed head SHA, evidence, disposition of findings, remaining risks, and rollback/restore plan where relevant. Material changes after review require reassessment; AI review alone does not constitute an authorized GitHub approval.
 - Maintainer accepts the scope and authorizes merge; a release requires **separate** approval and the [release checklist](RELEASE_CHECKLIST.md).
 
 ## States
