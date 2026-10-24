@@ -183,7 +183,7 @@ The published v0.3.0 release includes tested Node 24 + PostgreSQL 16 integration
 
 ## Project status
 
-**v0.4.0** is released on [GitHub](https://github.com/vlovers/mutation-boundary/releases/tag/v0.4.0) with a successful trusted npm publish workflow. The pinned registry consumer smoke tests the published version in CI. The API is not yet stable; use only isolated disposable PostgreSQL test databases.
+**v0.6.0** is released on [GitHub](https://github.com/vlovers/mutation-boundary/releases/tag/v0.6.0) with a successful trusted npm publish workflow. The pinned registry consumer smoke tests the published version in CI. The API is not yet stable; use only isolated disposable PostgreSQL test databases.
 
 For release process and verification history see [v0.2.0 release notes](docs/RELEASE_NOTES_v0.2.0.md) and [Release checklist](docs/RELEASING.md), [Architecture](docs/ARCHITECTURE.md), [Security policy](SECURITY.md), and [Contributing](CONTRIBUTING.md).
 

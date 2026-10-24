@@ -14,9 +14,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: mutation-boundary-publish-${{ github.event.inputs.release_tag || github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
   publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       id-token: write
@@ -40,28 +45,22 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           persist-credentials: false
+          fetch-depth: 0
           ref: ${{ github.event.inputs.release_tag || github.ref_name }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '24'
           package-manager-cache: false
+      - name: Test release provenance gates
+        run: node --test test/release-preflight.test.mjs
+      - name: Verify tag provenance, lockfile, and unpublished npm version
+        env:
+          RELEASE_TAG: ${{ github.event.inputs.release_tag || github.ref_name }}
+        run: node scripts/release-preflight.mjs
       - name: Ensure npm supports OIDC trusted publishing
         run: |
           npm install --global npm@^11.5.1
           npm --version
-      - name: Validate release tag and package version
-        env:
-          RELEASE_TAG: ${{ github.event.inputs.release_tag || github.ref_name }}
-        shell: bash
-        run: |
-          node --input-type=module <<'NODE'
-          import { readFileSync } from 'node:fs';
-          const pkg = JSON.parse(readFileSync('package.json','utf8'));
-          const tag = process.env.RELEASE_TAG;
-          if (!/^v\d+\.\d+\.\d+$/.test(tag) || tag !== 'v' + pkg.version || pkg.name !== 'mutation-boundary' || pkg.private === true) {
-            throw Error('Release tag/package mismatch or private package');
-          }
-          NODE
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm run typecheck
       - run: npm test
