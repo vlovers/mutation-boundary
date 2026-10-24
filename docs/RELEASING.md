@@ -1,6 +1,6 @@
 # Release process and historical verification checklist
 
-MutationBoundary v0.4.0 was released on 2026-10-21 (Kyiv local date), with successful tag CI and trusted npm publish workflow. Subsequent versions require independent checks. Package listing: [mutation-boundary on npm](https://www.npmjs.com/package/mutation-boundary).
+MutationBoundary **v0.6.0** is the current documented release. Its tag CI and trusted npm publishing workflow [succeeded](https://github.com/vlovers/mutation-boundary/actions/runs/39586698688); see [v0.6.0 release review](V060_RELEASE_REVIEW.md) for the exact source SHA, behavior changes and outstanding independent artifact/consumer checks. Earlier v0.4.0 release history remains relevant but is not the current status. Package listing: [mutation-boundary on npm](https://www.npmjs.com/package/mutation-boundary).
 
 The library must only be used against disposable, isolated PostgreSQL test databases. The published API is experimental and does not guarantee detection of transient, rolled-back, or concurrent writes.
 
@@ -41,6 +41,6 @@ For the next release:
 3. Watch the [publish workflow](https://github.com/vlovers/mutation-boundary/actions/workflows/publish.yml) and verify the new version on npm.
 4. Create a GitHub Release with reviewed notes from the same tag. GitHub Releases are not yet automatically created.
 
-Already-published `0.1.0`, `0.1.1`, `0.2.0`, `0.3.0`, and `0.4.0` cannot be re-published under the same version. Do not re-run completed publish workflows for existing versions: npm may reject them with a staged-version or immutable-version conflict. Do not change the tag/version mapping to bypass npm's immutable version rule.
+Already-published `0.1.0`, `0.1.1`, `0.2.0`, `0.3.0`, `0.4.0`, `0.5.0`, and `0.6.0` cannot be re-published under the same version. Do not re-run completed publish workflows for existing versions: npm may reject them with a staged-version or immutable-version conflict. Do not change the tag/version mapping to bypass npm's immutable version rule.
 
 This workflow does **not** automatically bump versions or release every commit; publishing is deliberately an explicit version-tag event.

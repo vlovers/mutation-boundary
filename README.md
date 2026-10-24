@@ -183,7 +183,7 @@ The published v0.3.0 release includes tested Node 24 + PostgreSQL 16 integration
 
 ## Project status
 
-**v0.4.0** is released on [GitHub](https://github.com/vlovers/mutation-boundary/releases/tag/v0.4.0) with a successful trusted npm publish workflow. The pinned registry consumer smoke tests the published version in CI. The API is not yet stable; use only isolated disposable PostgreSQL test databases.
+**v0.6.0** is the documented published package version (see the [v0.6.0 workflow evidence](https://github.com/vlovers/mutation-boundary/actions/runs/39586698688), [npm package](https://www.npmjs.com/package/mutation-boundary/v/0.6.0), and [release tag](https://github.com/vlovers/mutation-boundary/tree/v0.6.0)). CI includes a pinned registry consumer smoke test for v0.6.0; this is evidence for the exercised consumer, not universal compatibility. The API remains experimental. Version 0.6.0 also enforces a 32 MiB canonical snapshot string cap; this is **not** an overall process-memory bound. Use only isolated disposable PostgreSQL test databases.
 
 For release process and verification history see [v0.2.0 release notes](docs/RELEASE_NOTES_v0.2.0.md) and [Release checklist](docs/RELEASING.md), [Architecture](docs/ARCHITECTURE.md), [Security policy](SECURITY.md), and [Contributing](CONTRIBUTING.md).
 
