@@ -1,4 +1,4 @@
-# MutationBoundary safety notes (v0.4.0, experimental)
+# MutationBoundary safety notes (v0.6.0, experimental)
 
 MutationBoundary is a PostgreSQL net-state assertion tool for **disposable, isolated test databases only**. It compares snapshots of selected tables before and after an action. It cannot detect writes that were reverted before the second snapshot, mutations in unselected tables, or changes outside PostgreSQL.
 
@@ -33,7 +33,7 @@ Raw snapshot and diff helpers are internal implementation details, not public pa
 - Snapshot size is capped; exceeding the cap fails the assertion rather than passing.
 - Row keys must be unique and non-null. Simple identifier names support optionally schema-qualified tables (`schema.table`); arbitrary SQL identifiers and expressions are unsupported.
 - Action errors are rethrown if no mutation is detected. If mutations are detected, the mutation contract error takes precedence.
-- v0.4.0 has been released on GitHub; continue verifying PostgreSQL CI, package contents, connection safety and clean external installation for subsequent releases.
+- v0.6.0 is the current documented release; continue verifying PostgreSQL CI, package contents, connection safety and clean external installation for subsequent releases.
 - Since v0.1.1, unsupported driver values (undefined, non-finite numbers, bigint, functions and symbols) and cyclic structures fail closed rather than silently comparing ambiguous snapshots. This is not a guarantee that every custom driver representation is handled.
 
 ## v0.2: bounded snapshot representations
@@ -43,3 +43,7 @@ v0.2.0 rejects snapshot nesting deeper than 64 levels, individual text/binary sc
 ## v0.2: snapshot value types
 
 Snapshot comparisons retain type distinctions between text, JavaScript dates, and binary values. A date with the same ISO text as a string and a byte buffer whose Base64 text matches a string must not compare equal. `Buffer` and `Uint8Array` containing the same bytes are treated as equivalent binary values. Custom driver value representations still require compatibility tests; do not assume every exotic class is supported.
+
+## v0.6.0: canonical snapshot string budget
+
+The canonical representation of each snapshot across the selected tables is capped at **32 MiB**. If the initial snapshot exceeds the cap, the assertion fails closed before running the supplied action. This limit is not configurable. It bounds retained canonical snapshot data, **not** PostgreSQL driver buffers, raw query results, intermediate allocations, or total process RSS. Keep test fixtures small and selections narrow; do not treat this cap as permission to run against shared or sensitive databases.
