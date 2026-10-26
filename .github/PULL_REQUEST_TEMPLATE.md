@@ -4,6 +4,11 @@
 - Changes made:
 - Out of scope:
 
+## Project-specific checks
+- [ ] `npm run typecheck`, `npm test`, `npm run build`.
+- [ ] If PostgreSQL behavior changed, run `npm run test:postgres` only against disposable `mutation_boundary_test` with the dedicated `mutation_boundary_ci` role and `MUTATION_BOUNDARY_TEST_DATABASE_URL`.
+- [ ] Diagnostics contain no row values, keys, credentials, or connection strings; bug fix includes regression test.
+
 ## Verification evidence
 Record commands and results (do not check a box for an unrun command).
 - [ ] Formatting / lint
