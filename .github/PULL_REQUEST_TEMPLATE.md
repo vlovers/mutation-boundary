@@ -33,6 +33,8 @@ CI run links and known failures:
 - [ ] Diagnostics/logs/reports contain no credentials, connection strings, row values or row keys.
 - [ ] Broad API additions/new database adapters discussed before implementation; release/package checks are reported with exact evidence.
 
+See [Definition of Done](../docs/engineering/DEFINITION_OF_DONE.md), [independent review policy](../docs/engineering/REVIEW_POLICY.md), and [release checklist](../docs/engineering/RELEASE_CHECKLIST.md).
+
 ## Merge gate
 - [ ] Required checks passed
 - [ ] Independent review obtained (not author self-review)
