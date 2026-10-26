@@ -26,6 +26,13 @@ CI run links and known failures:
 - Rollback or recovery plan (if applicable):
 - Unresolved risks / blockers:
 
+
+## MutationBoundary database safety gates
+- [ ] Every bug fix includes a focused regression test.
+- [ ] PostgreSQL tests, if relevant, use only an independently verified disposable, isolated database via `MUTATION_BOUNDARY_TEST_DATABASE_URL`, database `mutation_boundary_test`, and role `mutation_boundary_ci`; names/confirmation flags alone do not establish disposability.
+- [ ] Diagnostics/logs/reports contain no credentials, connection strings, row values or row keys.
+- [ ] Broad API additions/new database adapters discussed before implementation; release/package checks are reported with exact evidence.
+
 ## Merge gate
 - [ ] Required checks passed
 - [ ] Independent review obtained (not author self-review)
