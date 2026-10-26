@@ -5,6 +5,11 @@ Applies to this repository. Read the README and relevant local documentation bef
 ## Project boundaries
 MutationBoundary detects unexpected PostgreSQL writes. Run destructive database checks only against isolated disposable test databases. Never point test helpers at production or shared databases; do not publish npm packages without explicit approval.
 
+## Existing project safeguards
+- Keep diagnostics free of database row values, keys, connection strings and credentials. Every bug fix needs a regression test.
+- Follow `CONTRIBUTING.md`: Node.js 24+, `npm run typecheck`, `npm test`, `npm run build`, and `npm run test:postgres` against the disposable `mutation_boundary_test` database using the dedicated `mutation_boundary_ci` role and `MUTATION_BOUNDARY_TEST_DATABASE_URL`.
+- Discuss broad API additions and new database adapters before implementation; do not silently widen supported scope.
+
 ## Development protocol
 1. Start from a scoped issue and feature branch. Identify acceptance criteria and affected behavior.
 2. Read existing implementation and tests; avoid unrelated refactors or generated-file churn.
