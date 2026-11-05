@@ -92,6 +92,10 @@ test('real pg.Pool: failure of the pinned reader connection fails closed and a f
     connectionString: connectionString(), max: 3, connectionTimeoutMillis: 2500,
   });
   const table = 'boundary_pinned_disconnect_probe';
+  // The pool may emit a connection error after terminating a checked-out
+  // backend. Observe it so an expected failure cannot become an unhandled event.
+  const poolErrors: Error[] = [];
+  pool.on('error', error => { poolErrors.push(error); });
   try {
     await pool.query(`CREATE TABLE ${table} (id integer PRIMARY KEY, state text NOT NULL)`);
     await pool.query(`INSERT INTO ${table} VALUES (1, 'initial')`);
@@ -102,6 +106,9 @@ test('real pg.Pool: failure of the pinned reader connection fails closed and a f
     const adapter = {
       async connect() {
         const client = await pool.connect();
+        // Checked-out clients can emit an error when their backend dies.
+        // The assertion still must reject on its after-snapshot query.
+        client.on('error', () => {});
         const pid = await client.query('SELECT pg_backend_pid()::integer AS pid');
         readerPid = pid.rows[0]?.pid;
         return client;
