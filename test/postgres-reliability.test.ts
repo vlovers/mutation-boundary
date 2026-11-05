@@ -66,10 +66,10 @@ test('real pg.Pool: post-action aggregate overflow releases pin and pool stays r
   });
   const table = 'boundary_after_budget_probe';
   try {
- 
     const safetyClient = await pool.connect();
     try { await assertDisposableDatabase(safetyClient, safety); }
-    finally { safetyClient.release(); }   await pool.query(`CREATE TABLE ${table} (id integer PRIMARY KEY, payload text NOT NULL)`);
+    finally { safetyClient.release(); }
+    await pool.query(`CREATE TABLE ${table} (id integer PRIMARY KEY, payload text NOT NULL)`);
     const tables = [{ name: table, key: 'id' }];
     await assert.rejects(assertNoMutation({
       db: pool, tables, safety,
@@ -100,10 +100,10 @@ test('real pg.Pool: failure of the pinned reader connection fails closed and a f
   const poolErrors: Error[] = [];
   pool.on('error', error => { poolErrors.push(error); });
   try {
- 
     const safetyClient = await pool.connect();
     try { await assertDisposableDatabase(safetyClient, safety); }
-    finally { safetyClient.release(); }   await pool.query(`CREATE TABLE ${table} (id integer PRIMARY KEY, state text NOT NULL)`);
+    finally { safetyClient.release(); }
+    await pool.query(`CREATE TABLE ${table} (id integer PRIMARY KEY, state text NOT NULL)`);
     await pool.query(`INSERT INTO ${table} VALUES (1, 'initial')`);
     // The pool has another connection available for the action, and the
     // snapshot reader is pinned for the whole assertion lifecycle.
@@ -148,10 +148,10 @@ test('real PostgreSQL: committed concurrent writer is visible only after it fini
   });
   const table = 'boundary_concurrent_writer_probe';
   try {
- 
     const safetyClient = await pool.connect();
     try { await assertDisposableDatabase(safetyClient, safety); }
-    finally { safetyClient.release(); }   await pool.query(`CREATE TABLE ${table} (id integer PRIMARY KEY, state text NOT NULL)`);
+    finally { safetyClient.release(); }
+    await pool.query(`CREATE TABLE ${table} (id integer PRIMARY KEY, state text NOT NULL)`);
     await pool.query(`INSERT INTO ${table} VALUES (1, 'before')`);
     await assert.rejects(assertNoMutation({
       db: pool, tables: [{ name: table, key: 'id' }], safety,
