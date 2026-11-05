@@ -88,6 +88,13 @@ The v0.6.0 tag points to commit `6dad293`, with successful tag CI and npm publis
 
 Limitations remain: the cap does not constrain driver query memory or peak process RSS; snapshots cannot prove absence of transient/rolled-back writes, unselected table changes or concurrent interference.
 
+## Next reliability package — snapshot integrity (unreleased)
+
+- [x] Identify canonical array accessor and symbol-key risks, shadowed `map` / `toString` / `byteLength`, and spoofable `Symbol.toStringTag` handling in the current implementation.
+- [ ] Merge a single reviewed correctness PR with descriptor-based validation, matching unit and disposable PostgreSQL tests and failure-path cleanup checks.
+- [ ] Measure serializer/driver memory allocations and large valid workloads before claiming any process-wide memory limit; retain the 32 MiB **retained canonical data** wording.
+- [ ] Consolidate existing #68–#71 engineering standards / release provenance PRs with independent review and no duplicated policy files.
+
 ## v1.0.0 — stable contract
 
 - [ ] Public API/versioning policy, migration guidance, proven support matrix, reliability and security review.
