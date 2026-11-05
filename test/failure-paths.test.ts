@@ -750,7 +750,10 @@ test('unqueryable pooled reader is discarded even when query throws a non-Error 
     async connect() {
       return {
         _queryable: false,
-        async query(): Promise<Row[]> { throw thrown; },
+        async query(sql: string): Promise<Row[]> {
+          if (sql.includes('current_database()')) return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+          throw thrown;
+        },
         release(...args: unknown[]) { releases.push(args); },
       };
     },
@@ -770,7 +773,10 @@ test('release failure keeps precedence and retains non-Error verification failur
     async connect() {
       return {
         _queryable: false,
-        async query(): Promise<Row[]> { throw thrown; },
+        async query(sql: string): Promise<Row[]> {
+          if (sql.includes('current_database()')) return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+          throw thrown;
+        },
         release() { throw releaseError; },
       };
     },
