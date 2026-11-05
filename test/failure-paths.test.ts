@@ -719,3 +719,26 @@ test('pooled connection errors discard broken clients without masking the origin
     assert.deepEqual(releases, [[scenario.discard ? scenario.error : undefined]]);
   }
 });
+
+
+test('action connection failure does not discard a healthy pinned snapshot reader', async () => {
+  const actionError = Object.assign(new Error('action connection lost'), { code: '08006' });
+  const releases: unknown[][] = [];
+  let snapshotQueries = 0;
+  const db = {
+    async connect() {
+      return {
+        _queryable: true,
+        async query(sql: string): Promise<Row[]> {
+          if (sql.includes('current_database()')) return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+          snapshotQueries++;
+          return [{ id: 1, payload: 'unchanged' }];
+        },
+        release(...args: unknown[]) { releases.push(args); },
+      };
+    },
+  };
+  await assert.rejects(assertNoMutation({ db, tables, safety, action: async () => { throw actionError; } }), error => error === actionError);
+  assert.equal(snapshotQueries, 2, 'both pinned-reader snapshots must succeed');
+  assert.deepEqual(releases, [[undefined]], 'healthy pinned reader must be reused');
+});

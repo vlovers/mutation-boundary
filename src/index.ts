@@ -316,13 +316,19 @@ export async function assertNoMutation(options: AssertNoMutationOptions): Promis
     ); 
   const pool = isPool(db) ? db : undefined; 
   const client = pool ? await pool.connect() : db as BoundaryDatabase;
+  // Only errors from queries on this pinned reader can identify its connection as broken.
+  // The action may use another connection and its SQLSTATE must not poison this client.
+  let readerOperation = true;
   try {
     await assertDisposableDatabase(client, safety);
     const before = await takeBoundarySnapshot(client, tables, maxRowsPerTable);
     let actionError: unknown;
     let actionFailed = false;
+    readerOperation = false;
     try { await action(); } catch (error) { actionFailed = true; actionError = error; }
+    readerOperation = true;
     const after = await takeBoundarySnapshot(client, tables, maxRowsPerTable);
+    readerOperation = false;
     const changes = diffBoundarySnapshots(before, after);
     if (changes.length) throw new MutationBoundaryError(changes, tables);
     if (actionFailed) throw actionError;
@@ -335,7 +341,7 @@ export async function assertNoMutation(options: AssertNoMutationOptions): Promis
         // unusable. Tell pg.Pool to discard it instead of recycling it.
         // Ordinary assertion failures still return healthy clients normally.
         const connectionFailure = primaryError instanceof Error && (
-          /^(?:08[0-9A-Z]{3}|57P01|57P02|57P03)$/.test(String((primaryError as Error & { code?: string }).code ?? '')) ||
+          (readerOperation && /^(?:08[0-9A-Z]{3}|57P01|57P02|57P03)$/.test(String((primaryError as Error & { code?: string }).code ?? ''))) ||
           // Optional pg-internal health hint; confined to pool cleanup only.
           (client as BoundaryDatabase & { _queryable?: boolean })._queryable === false
         );
