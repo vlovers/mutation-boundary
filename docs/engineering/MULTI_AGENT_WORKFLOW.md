@@ -55,7 +55,9 @@ Owned paths / dependencies / conflicting PRs:
 DB safety, API/package compatibility and rollback:
 Checks actually run (command, exit status, environment, CI URL):
 Disposable PostgreSQL validation (or NOT RUN):
-Artifact owner / exact tested SHA / producing command and environment:\nSanitized artifact location / CI run / creation and expiry / safe regeneration:\nEvidence state (PASS, FAIL, NOT RUN, N/A, QUEUED, STALE, UNAVAILABLE):
+Artifact owner / exact tested SHA / producing command and environment:
+Sanitized artifact location / CI run / creation and expiry / safe regeneration:
+Evidence state (PASS, FAIL, NOT RUN, N/A, QUEUED, STALE, UNAVAILABLE):
 Review findings / blocked decisions / next owner:
 Maintainer authorization required for merge or release:
 ```
