@@ -1,6 +1,6 @@
 # Release process and historical verification checklist
 
-MutationBoundary v0.4.0 was released on 2026-10-21 (Kyiv local date), with successful tag CI and trusted npm publish workflow. Subsequent versions require independent checks. Package listing: [mutation-boundary on npm](https://www.npmjs.com/package/mutation-boundary).
+MutationBoundary v0.6.0 was released on 2026-10-21 (Kyiv local date), with successful tag CI, trusted npm publishing and subsequent independently installed registry consumer verification. Subsequent versions require independent checks. Package listing: [mutation-boundary on npm](https://www.npmjs.com/package/mutation-boundary).
 
 The library must only be used against disposable, isolated PostgreSQL test databases. The published API is experimental and does not guarantee detection of transient, rolled-back, or concurrent writes.
 
@@ -26,7 +26,7 @@ The package uses `publishConfig.access: public` and currently advertises Node.js
 
 For future releases, prefer npm trusted publishing with GitHub Actions OIDC, explicit minimal workflow permissions, a protected release process and npm provenance. Avoid long-lived npm tokens.
 
-See [README](../README.md), [Safety](SAFETY.md), [Architecture](ARCHITECTURE.md), [Security policy](../SECURITY.md), and [Contributing](../CONTRIBUTING.md).
+See [README](../README.md), [Safety](SAFETY.md), [Architecture](ARCHITECTURE.md), [Security policy](../SECURITY.md), [Contributing](../CONTRIBUTING.md), [engineering review policy](engineering/REVIEW_POLICY.md), and [release checklist](engineering/RELEASE_CHECKLIST.md).
 
 ## Automated future npm releases
 
@@ -44,3 +44,12 @@ For the next release:
 Already-published `0.1.0`, `0.1.1`, `0.2.0`, `0.3.0`, and `0.4.0` cannot be re-published under the same version. Do not re-run completed publish workflows for existing versions: npm may reject them with a staged-version or immutable-version conflict. Do not change the tag/version mapping to bypass npm's immutable version rule.
 
 This workflow does **not** automatically bump versions or release every commit; publishing is deliberately an explicit version-tag event.
+
+## Additional future-release provenance gate (2026-10-24)
+
+Before installing project dependencies or attempting any publish, the workflow now checks:
+- the requested release tag has the exact `vMAJOR.MINOR.PATCH` form and matches `package.json` and the lockfile root;
+- the checked-out commit resolves to the requested tag, the remote tag object has not moved, and the commit is an ancestor of current `origin/main`;
+- the exact version is **absent** from the live npm registry (network failures and malformed responses fail closed).
+
+Both tag pushes and manual workflow-dispatch retries run the same gate. A retry after successful publication is intentionally rejected: use read-only registry verification rather than republishing. The gate cannot substitute for GitHub tag protection, branch review, npm account controls, or an independent approval. CI runs isolated regression tests of the gate on every push and PR. No package is published from PR CI.

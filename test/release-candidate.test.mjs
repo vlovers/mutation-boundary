@@ -28,7 +28,8 @@ test('published release documentation matches v0.6 tag and install instructions'
 
 test('npm publisher rejects version-tag mismatch before publishing', () => {
   const workflow = text('.github/workflows/publish.yml');
-  assert.match(workflow, /tag !== 'v' \+ pkg\.version/);
+  assert.match(workflow, /node scripts\/release-preflight\.mjs/);
+  assert.match(text('scripts/release-preflight.mjs'), /tag, 'v' \+ pkg\.version/);
   assert.match(workflow, /node scripts\/verify-package\.mjs/);
   assert.match(workflow, /npm publish --access public/);
 });

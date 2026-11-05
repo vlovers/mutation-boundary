@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — next snapshot integrity update (not published)
+
+- Canonical array snapshots now inspect own data descriptors and ordered dense indices before reading values, rejecting nested index getters, symbol keys, accessors and sparse arrays disguised by unrelated enumerable fields.
+- Replace shadowable `Array.prototype.map`, Buffer `toString` and binary `byteLength` reads with validated intrinsic operations. Ignore spoofed `Symbol.toStringTag` when recognizing genuine Date objects.
+- Reuse own property descriptors during object serialization to avoid rereading adapter-controlled getters. Require own enumerable data descriptors for row keys, preventing inherited getter execution or hidden identity fields.
+- Add unit, pool cleanup and disposable PostgreSQL JSONB-array regressions. No new public exports; additional unusual adapter representations intentionally fail closed.
+
+
 ## 0.6.0 — reliability hardening (published via npm workflow 2026-10-21)
 
 - Preserve the original verification/action failure as a non-enumerable `cause` on a failed pool-client release when the release error has no existing cause, without changing thrown release-error identity or precedence (PRs #49–#52).

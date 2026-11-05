@@ -623,3 +623,68 @@ test('large after-snapshot rejected even if action itself resolves', async () =>
   assert.equal(reads, 2);
   assert.equal(executed, 1);
 });
+
+
+test('unsafe nested array appearing after action fails closed and releases pinned pool client', async () => {
+  let releases = 0;
+  let reads = 0;
+  let unsafeReads = 0;
+  let actionCalls = 0;
+  const array = [1];
+  Object.defineProperty(array, '0', {
+    enumerable: true,
+    get() { unsafeReads++; throw new Error('sensitive getter must not run'); },
+  });
+  const pool = {
+    async connect() {
+      return {
+        async query(sql: string): Promise<Row[]> {
+          if (sql.includes('current_database()')) {
+            return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+          }
+          reads++;
+          return reads === 1 ? [{ id: 1, payload: [1] }] : [{ id: 1, payload: array }];
+        },
+        release() { releases++; },
+      };
+    },
+  };
+  await assert.rejects(assertNoMutation({
+    db: pool, tables, safety,
+    action: async () => { actionCalls++; },
+  }), /unsupported snapshot accessor in table tasks/);
+  assert.equal(actionCalls, 1);
+  assert.equal(reads, 2);
+  assert.equal(unsafeReads, 0);
+  assert.equal(releases, 1);
+});
+
+test('array accessor baseline failure does not execute action and releases pinned client', async () => {
+  let releases = 0;
+  let getterCalls = 0;
+  let actionCalls = 0;
+  const array = [1];
+  Object.defineProperty(array, '0', {
+    enumerable: true,
+    get() { getterCalls++; throw new Error('unsafe array getter'); },
+  });
+  const pool = {
+    async connect() {
+      return {
+        async query(sql: string): Promise<Row[]> {
+          if (sql.includes('current_database()')) {
+            return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+          }
+          return [{ id: 1, payload: array }];
+        },
+        release() { releases++; },
+      };
+    },
+  };
+  await assert.rejects(assertNoMutation({
+    db: pool, tables, safety, action: async () => { actionCalls++; },
+  }), /unsupported snapshot accessor in table tasks/);
+  assert.equal(getterCalls, 0);
+  assert.equal(actionCalls, 0);
+  assert.equal(releases, 1);
+});

@@ -1,54 +1,54 @@
-## Purpose and scope
-- Linked issue:
-- Acceptance criteria:
-- Changes made:
-- Out of scope:
+## Outcome and scope
 
-## Project-specific checks
-- [ ] `npm run typecheck`, `npm test`, `npm run build`.
-- [ ] If PostgreSQL behavior changed, run `npm run test:postgres` only against disposable `mutation_boundary_test` with the dedicated `mutation_boundary_ci` role and `MUTATION_BOUNDARY_TEST_DATABASE_URL`.
-- [ ] Diagnostics contain no row values, keys, credentials, or connection strings; bug fix includes regression test.
+Describe the concrete change for consumers or maintainers.
 
-## Multi-agent batch integration
-- Parent tracking issue, batch owner, independent reviewer and integrator:
-- Dependencies and other open/superseded PRs:
-- Owned files / contested contracts (snapshot, CI, package, fixtures):
-- Exact base branch + base/head SHAs used for review:
-- [ ] One coherent, independently verifiable deliverable (not artificial micro-PRs)
-- [ ] Conflicting agent edits and integration order resolved without overwriting peer work
-- [ ] Head and checks refreshed after rebase/merge if the effective diff changed
+**Linked issue:** <!-- e.g. Closes #123; omit if no issue -->
 
-See [multi-agent protocol](../docs/engineering/MULTI_AGENT_WORKFLOW.md).
+**Acceptance criteria:**
+- [ ] 
 
-## Verification evidence
-Record commands and results (do not check a box for an unrun command).
-- [ ] Formatting / lint
-- [ ] Typecheck (if applicable)
-- [ ] Unit / integration tests
-- [ ] Build (if applicable)
-- [ ] Smoke / end-to-end tests (if applicable)
-- [ ] Negative / failure-path regression tests (if applicable)
+**Explicitly out of scope:**
 
-CI run links and known failures:
+## Verification (report actual results)
 
-## Risk, documentation and release
-- Security / authorization / secrets / data impact:
-- Documentation and migration changes:
-- Rollback or recovery plan (if applicable):
-- Unresolved risks / blockers:
+| Check | Result (pass/fail/N/A/not run) | Evidence / reason |
+| --- | --- | --- |
+| Typecheck / unit tests | | |
+| Build / package checks | | |
+| PostgreSQL integration (disposable DB only) | | |
+| Consumer / registry checks (if applicable) | | |
+| Documentation and links | | |
 
+## Risk and compatibility
 
-## MutationBoundary database safety gates
-- [ ] Every bug fix includes a focused regression test.
-- [ ] PostgreSQL tests, if relevant, use only an independently verified disposable, isolated database via `MUTATION_BOUNDARY_TEST_DATABASE_URL`, database `mutation_boundary_test`, and role `mutation_boundary_ci`; names/confirmation flags alone do not establish disposability.
-- [ ] Diagnostics/logs/reports contain no credentials, connection strings, row values or row keys.
-- [ ] Broad API additions/new database adapters discussed before implementation; release/package checks are reported with exact evidence.
+- Public API / Node / type definitions:
+- Safety, secrets and database scope:
+- Race or transaction assumptions:
+- Rollback / release impact:
 
-See [Definition of Done](../docs/engineering/DEFINITION_OF_DONE.md), [independent review policy](../docs/engineering/REVIEW_POLICY.md), and [release checklist](../docs/engineering/RELEASE_CHECKLIST.md).
+## Independent review
 
-## Merge gate
-- [ ] Required checks passed
-- [ ] Independent review obtained (not author self-review)
-- [ ] Blocking findings resolved
+- Reviewer/session:
+- Findings and resolution:
+- Outstanding blockers:
 
-Do not merge while any required gate is missing.
+## Definition of Done
+
+- [ ] Relevant acceptance criteria implemented
+- [ ] Required checks executed, or N/A/not run explicitly justified
+- [ ] No unresolved blocking correctness/security/data-safety findings
+- [ ] Documentation and limitations accurately describe behavior
+- [ ] Release approval tracked separately (if applicable)
+
+See [Definition of Done](../docs/engineering/DEFINITION_OF_DONE.md), [review policy](../docs/engineering/REVIEW_POLICY.md) and [release checklist](../docs/engineering/RELEASE_CHECKLIST.md).
+
+## Parallel-agent delivery
+
+- Parent Issue / batch owner / independent reviewer / integration owner:
+- Related or superseded PRs and shared-file dependencies:
+- Target base and exact head SHA reviewed:
+- [ ] Work is one complete, independently verifiable batch rather than artificial micro-PRs
+- [ ] Conflicts with other agents have been reconciled without overwriting their work
+- [ ] CI and review reference the current head SHA after integration
+
+See [multi-agent workflow](../docs/engineering/MULTI_AGENT_WORKFLOW.md).
