@@ -167,3 +167,46 @@ test('real PostgreSQL: committed concurrent writer is visible only after it fini
     finally { await pool.end(); }
   }
 });
+
+
+test('real PostgreSQL: pre-existing REPEATABLE READ transaction cannot observe an independent commit', async () => {
+  const reader = new pg.Client({ connectionString: connectionString() });
+  const writer = new pg.Client({ connectionString: connectionString() });
+  const table = 'boundary_repeatable_read_probe';
+  await reader.connect();
+  try {
+    await assertDisposableDatabase(reader, safety);
+    await reader.query(`CREATE TABLE ${table} (id integer PRIMARY KEY, state text NOT NULL)`);
+    await reader.query(`INSERT INTO ${table} VALUES (1, 'before')`);
+    await writer.connect();
+    await writer.query('SELECT current_database()');
+    await reader.query('BEGIN ISOLATION LEVEL REPEATABLE READ');
+    try {
+      // These two SELECT snapshots execute on the same old PostgreSQL
+      // transaction snapshot. The writer commits, but REPEATABLE READ still
+      // exposes the old state to the checked reader.
+      let writerCommitted = false;
+      await assertNoMutation({
+        db: reader, tables: [{ name: table, key: 'id' }], safety,
+        action: async () => {
+          await writer.query(`UPDATE ${table} SET state = 'after' WHERE id = 1`);
+          writerCommitted = true;
+        },
+      });
+      assert.equal(writerCommitted, true);
+      const invisible = await reader.query(`SELECT state FROM ${table} WHERE id = 1`);
+      assert.equal(invisible.rows[0]?.state, 'before', 'repeatable-read snapshot must remain old');
+    } finally {
+      await reader.query('ROLLBACK');
+    }
+    const visible = await reader.query(`SELECT state FROM ${table} WHERE id = 1`);
+    assert.equal(visible.rows[0]?.state, 'after', 'committed writer must be visible after rollback');
+  } finally {
+    try {
+      await reader.query(`DROP TABLE IF EXISTS ${table}`);
+    } finally {
+      await reader.end();
+      await writer.end().catch(() => {});
+    }
+  }
+});
