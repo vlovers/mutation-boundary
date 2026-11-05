@@ -23,9 +23,9 @@ npm ci --ignore-scripts --no-audit --no-fund
 npm run profile:memory
 ```
 
-The script first checks database and user identity and creates only a session-local temporary table. It measures four fixtures: small, valid-large, over-budget, and a narrow projection of the over-budget dataset. CI executes this profile against the disposable PostgreSQL service and fails if the expected pass/pass/reject/pass outcomes change. It emits only durations, outcomes and point-in-time `rss`, `heapUsed`, `external`, and `arrayBuffers` byte counts, not rows or connection secrets.
+The script first checks database and user identity and creates only a session-local temporary table. It measures four fixtures: small, valid-large, over-budget, and a narrow projection of the over-budget dataset. CI executes this profile against the disposable PostgreSQL service and fails if the expected pass/pass/reject/pass outcomes change. It emits only durations, outcomes, point-in-time `rss`, `heapUsed`, `external`, and `arrayBuffers` byte counts, and the operating-system `process.resourceUsage().maxRSS` high-water mark (KiB on Linux), not rows or connection secrets.
 
-Samples are **not peak values**: the observed resident/heap numbers can be affected by GC, allocator reuse, Node/pg versions and other activity. Record OS, Node, PostgreSQL version and runner size separately when comparing runs. For reliable peak measurements use an isolated process profiler and define a representative fixture first. Running this command does not prove a hard memory ceiling.
+Samples are **not per-fixture peak values**: the point-in-time resident/heap numbers can be affected by GC, allocator reuse, Node/pg versions and other activity. The `maxRSS` high-water mark is cumulative for the whole Node process; it cannot attribute memory to one query or distinguish driver allocations from the canonical snapshot. Record OS, Node, PostgreSQL version and runner size separately when comparing runs. For reliable peak measurements use an isolated process profiler and define a representative fixture first. Running this command does not prove a hard memory ceiling.
 
 ## Release decision
 
