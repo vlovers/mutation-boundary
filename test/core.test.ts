@@ -549,3 +549,37 @@ test('native Dates and JSONB-style nested arrays retain canonical unchanged sema
   const after = [{ id: 1, occurred: new Date('2026-05-01T12:00:00Z'), payload: { data: [1, { a: 'a', b: 2 }] } }];
   await assertNoMutation({ db: fakeDb(before, after), tables, safety, action: async () => {} });
 });
+
+
+test('binary byteLength overrides cannot execute getters or bypass the 1 MiB bound', async () => {
+  for (const payload of [Buffer.from([1, 2, 3]), new Uint8Array([1, 2, 3])]) {
+    let getterCalls = 0;
+    Object.defineProperty(payload, 'byteLength', {
+      get() { getterCalls++; throw new Error('unsafe byteLength getter'); },
+    });
+    const db = {
+      async query(sql: string): Promise<Row[]> {
+        if (sql.includes('current_database()')) return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+        return [{ id: 1, payload }];
+      },
+    };
+    await assertNoMutation({ db, tables, safety, action: async () => {} });
+    assert.equal(getterCalls, 0);
+  }
+
+  const payload = Buffer.alloc(1024 * 1024 + 1);
+  Object.defineProperty(payload, 'byteLength', {
+    get() { throw new Error('oversized getter must not run'); },
+  });
+  let called = false;
+  const db = {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      return [{ id: 1, payload }];
+    },
+  };
+  await assert.rejects(assertNoMutation({
+    db, tables, safety, action: async () => { called = true; },
+  }), /snapshot scalar size limit exceeded/);
+  assert.equal(called, false);
+});
