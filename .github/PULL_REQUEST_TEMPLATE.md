@@ -9,6 +9,17 @@
 - [ ] If PostgreSQL behavior changed, run `npm run test:postgres` only against disposable `mutation_boundary_test` with the dedicated `mutation_boundary_ci` role and `MUTATION_BOUNDARY_TEST_DATABASE_URL`.
 - [ ] Diagnostics contain no row values, keys, credentials, or connection strings; bug fix includes regression test.
 
+## Multi-agent batch integration
+- Parent tracking issue, batch owner, independent reviewer and integrator:
+- Dependencies and other open/superseded PRs:
+- Owned files / contested contracts (snapshot, CI, package, fixtures):
+- Exact base branch + base/head SHAs used for review:
+- [ ] One coherent, independently verifiable deliverable (not artificial micro-PRs)
+- [ ] Conflicting agent edits and integration order resolved without overwriting peer work
+- [ ] Head and checks refreshed after rebase/merge if the effective diff changed
+
+See [multi-agent protocol](../docs/engineering/MULTI_AGENT_WORKFLOW.md).
+
 ## Verification evidence
 Record commands and results (do not check a box for an unrun command).
 - [ ] Formatting / lint
