@@ -65,11 +65,13 @@ test('real pg.Pool: post-action aggregate overflow releases pin and pool stays r
     connectionString: connectionString(), max: 2, connectionTimeoutMillis: 2500,
   });
   const table = 'boundary_after_budget_probe';
+  let fixtureCreated = false;
   try {
     const safetyClient = await pool.connect();
     try { await assertDisposableDatabase(safetyClient, safety); }
     finally { safetyClient.release(); }
     await pool.query(`CREATE TABLE ${table} (id integer PRIMARY KEY, payload text NOT NULL)`);
+    fixtureCreated = true;
     const tables = [{ name: table, key: 'id' }];
     await assert.rejects(assertNoMutation({
       db: pool, tables, safety,
@@ -85,7 +87,7 @@ test('real pg.Pool: post-action aggregate overflow releases pin and pool stays r
     });
     assert.equal(pool.idleCount, pool.totalCount);
   } finally {
-    try { await pool.query(`DROP TABLE IF EXISTS ${table}`); }
+    try { if (fixtureCreated) await pool.query(`DROP TABLE IF EXISTS ${table}`); }
     finally { await pool.end(); }
   }
 });
@@ -95,6 +97,7 @@ test('real pg.Pool: failure of the pinned reader connection fails closed and a f
     connectionString: connectionString(), max: 3, connectionTimeoutMillis: 2500,
   });
   const table = 'boundary_pinned_disconnect_probe';
+  let fixtureCreated = false;
   // The pool may emit a connection error after terminating a checked-out
   // backend. Observe it so an expected failure cannot become an unhandled event.
   const poolErrors: Error[] = [];
@@ -104,6 +107,7 @@ test('real pg.Pool: failure of the pinned reader connection fails closed and a f
     try { await assertDisposableDatabase(safetyClient, safety); }
     finally { safetyClient.release(); }
     await pool.query(`CREATE TABLE ${table} (id integer PRIMARY KEY, state text NOT NULL)`);
+    fixtureCreated = true;
     await pool.query(`INSERT INTO ${table} VALUES (1, 'initial')`);
     // The pool has another connection available for the action, and the
     // snapshot reader is pinned for the whole assertion lifecycle.
@@ -137,7 +141,7 @@ test('real pg.Pool: failure of the pinned reader connection fails closed and a f
       db: pool, tables: [{ name: table, key: 'id' }], safety, action: async () => {},
     });
   } finally {
-    try { await pool.query(`DROP TABLE IF EXISTS ${table}`); }
+    try { if (fixtureCreated) await pool.query(`DROP TABLE IF EXISTS ${table}`); }
     finally { await pool.end(); }
   }
 });
@@ -147,11 +151,13 @@ test('real PostgreSQL: committed concurrent writer is visible only after it fini
     connectionString: connectionString(), max: 3, connectionTimeoutMillis: 2500,
   });
   const table = 'boundary_concurrent_writer_probe';
+  let fixtureCreated = false;
   try {
     const safetyClient = await pool.connect();
     try { await assertDisposableDatabase(safetyClient, safety); }
     finally { safetyClient.release(); }
     await pool.query(`CREATE TABLE ${table} (id integer PRIMARY KEY, state text NOT NULL)`);
+    fixtureCreated = true;
     await pool.query(`INSERT INTO ${table} VALUES (1, 'before')`);
     await assert.rejects(assertNoMutation({
       db: pool, tables: [{ name: table, key: 'id' }], safety,
@@ -172,7 +178,7 @@ test('real PostgreSQL: committed concurrent writer is visible only after it fini
     });
     assert.equal(pool.idleCount, pool.totalCount);
   } finally {
-    try { await pool.query(`DROP TABLE IF EXISTS ${table}`); }
+    try { if (fixtureCreated) await pool.query(`DROP TABLE IF EXISTS ${table}`); }
     finally { await pool.end(); }
   }
 });
