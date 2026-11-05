@@ -35,7 +35,7 @@ test('real PostgreSQL: aggregate budget rejects a large valid dataset before act
       action: async () => { invoked = true; },
     }), error => {
       assert.ok(error instanceof Error);
-      assert.match(error.message, /snapshot total size limit exceeded \\(32 MiB\\)/);
+      assert.match(error.message, /snapshot total size limit exceeded \(32 MiB\)/);
       assert.doesNotMatch(error.message, /untouched|payload contents/);
       return true;
     });
@@ -73,7 +73,7 @@ test('real pg.Pool: post-action aggregate overflow releases pin and pool stays r
       action: async () => {
         await pool.query(`INSERT INTO ${table} SELECT n, repeat(chr(97 + (n % 26)), 700000) FROM generate_series(1, 48) n`);
       },
-    }), /snapshot total size limit exceeded \\(32 MiB\\)/);
+    }), /snapshot total size limit exceeded \(32 MiB\)/);
     assert.equal(pool.idleCount, pool.totalCount, 'checked-out snapshot client must be returned');
     assert.ok(pool.totalCount <= 2);
     await assertNoMutation({
