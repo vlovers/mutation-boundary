@@ -602,7 +602,8 @@ test('inherited adapter row-key getters never execute and baseline fails closed'
     },
   };
   await assert.rejects(assertNoMutation({
-    db, tables, safety, action: async () => { actionCalls++; },
+    db, tables: [{ name: 'tasks', key: 'id', excludeColumns: ['omitted'] }],
+    safety, action: async () => { actionCalls++; },
   }), /missing row key in table tasks/);
   assert.equal(keyReads, 0);
   assert.equal(actionCalls, 0);
