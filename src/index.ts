@@ -23,6 +23,11 @@ type Snapshot = Map<string, Map<string, string>>;
 // Budget retained canonical strings per snapshot across all selected tables.
 // This is not a bound on driver buffers or peak process memory.
 const MAX_SNAPSHOT_BYTES = 32 * 1024 * 1024;
+// Read typed-array size through the built-in brand-checked getter; adapter
+// instances can shadow .byteLength with an arbitrary user-defined getter.
+const typedArrayByteLength = Object.getOwnPropertyDescriptor(
+  Object.getPrototypeOf(Uint8Array.prototype), 'byteLength',
+)!.get!;
 const identifier = (value: string) => {
   if (!/^[a-z_][a-z_0-9]*$/i.test(value)) {
     throw new Error('MutationBoundary: unsafe SQL identifier');
@@ -67,11 +72,11 @@ const stable = (value: unknown): string => {
         return 'D' + JSON.stringify(date);
       }
       if (typeof Buffer !== 'undefined' && Buffer.isBuffer(part)) {
-        if (part.byteLength > 1024 * 1024) throw new Error('MutationBoundary: snapshot scalar size limit exceeded');
+        if (typedArrayByteLength.call(part) > 1024 * 1024) throw new Error('MutationBoundary: snapshot scalar size limit exceeded');
         return 'B' + JSON.stringify(Buffer.prototype.toString.call(part, 'base64'));
       }
       if (part instanceof Uint8Array) {
-        if (part.byteLength > 1024 * 1024) throw new Error('MutationBoundary: snapshot scalar size limit exceeded');
+        if (typedArrayByteLength.call(part) > 1024 * 1024) throw new Error('MutationBoundary: snapshot scalar size limit exceeded');
         return 'B' + JSON.stringify(Buffer.from(part).toString('base64'));
       }
       if (Array.isArray(part)) {
