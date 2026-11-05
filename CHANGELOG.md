@@ -3,7 +3,7 @@
 ## Unreleased — PostgreSQL reliability and memory characterization
 
 - Add real disposable PostgreSQL tests for the 32 MiB aggregate snapshot limit both before and after the action, selected-column projection on large rows, and subsequent pool reuse.
-- Add PostgreSQL regression tests for pinned reader connection failures and a committed independent writer before the after-snapshot; concurrency outside an isolated fixture remains unsupported.
+- Add PostgreSQL regression tests for pinned reader connection failures, a committed independent writer before the after-snapshot, and the **REPEATABLE READ visibility blind spot** when a caller wraps the snapshot reader in a long-lived transaction; concurrency outside an isolated fixture remains unsupported.
 - Add an optional `npm run profile:memory` command and [memory/reliability methodology](docs/MEMORY_RELIABILITY.md). Its RSS/heap measurements are observations, not a hard memory ceiling.
 - No public API or runtime dependency changes. Not yet published.
 
