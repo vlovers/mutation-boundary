@@ -90,7 +90,7 @@ Limitations remain: the cap does not constrain driver query memory or peak proce
 
 ## Next reliability package — snapshot integrity (unreleased)
 
-- [x] Identify canonical array accessor and symbol-key risks, shadowed `map` / `toString` / `byteLength`, and spoofable `Symbol.toStringTag` handling in the current implementation.
+- [x] Identify canonical array accessor and symbol-key risks, shadowed `map` / `toString` / `byteLength`, spoofable `Symbol.toStringTag`, and inherited row identity getters in the current implementation.
 - [ ] Merge a single reviewed correctness PR with descriptor-based validation, matching unit and disposable PostgreSQL tests and failure-path cleanup checks.
 - [ ] Measure serializer/driver memory allocations and large valid workloads before claiming any process-wide memory limit; retain the 32 MiB **retained canonical data** wording.
 - [ ] Consolidate existing #68–#71 engineering standards / release provenance PRs with independent review and no duplicated policy files.
