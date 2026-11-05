@@ -28,6 +28,8 @@ MutationBoundary detects unexpected PostgreSQL writes. Run destructive database 
 ## Definition of Done
 Acceptance criteria met; regression tests and applicable checks green; docs updated; security and operational impact recorded; independent review obtained; no unresolved blocking findings.
 
+Parallel development: follow [Multi-agent workflow](docs/engineering/MULTI_AGENT_WORKFLOW.md) for dependency planning, branch/worktree isolation, shared-file ownership, SHA-pinned review, safe recovery and complete batch handoffs. Claims do not enforce locks or authorize database access.
+
 See also: [Definition of Done](docs/engineering/DEFINITION_OF_DONE.md), [independent review policy](docs/engineering/REVIEW_POLICY.md), and [release checklist](docs/engineering/RELEASE_CHECKLIST.md). These documents supplement this contract and `CONTRIBUTING.md`; they do not replace stricter project-specific requirements.
 
 Cross-repository governance tracking: vlovers/ai-office#87. These instructions apply only to this repository.
