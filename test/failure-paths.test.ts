@@ -688,3 +688,30 @@ test('array accessor baseline failure does not execute action and releases pinne
   assert.equal(actionCalls, 0);
   assert.equal(releases, 1);
 });
+
+
+test('pooled connection errors discard broken clients without masking the original failure', async () => {
+  for (const scenario of [
+    { error: Object.assign(new Error('terminated'), { code: '57P01' }), unqueryable: false, discard: true },
+    { error: new Error('closed'), unqueryable: true, discard: true },
+    { error: new Error('ordinary snapshot error'), unqueryable: false, discard: false },
+  ]) {
+    const releases: unknown[][] = [];
+    let actions = 0;
+    const db = {
+      async connect() {
+        return {
+          _queryable: !scenario.unqueryable,
+          async query(sql: string): Promise<Row[]> {
+            if (sql.includes('current_database()')) return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+            throw scenario.error;
+          },
+          release(...args: unknown[]) { releases.push(args); },
+        };
+      },
+    };
+    await assert.rejects(assertNoMutation({ db, tables, safety, action: async () => { actions++; } }), error => error === scenario.error);
+    assert.equal(actions, 0);
+    assert.deepEqual(releases, [[scenario.discard ? scenario.error : undefined]]);
+  }
+});

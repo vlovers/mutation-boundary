@@ -336,6 +336,7 @@ export async function assertNoMutation(options: AssertNoMutationOptions): Promis
         // Ordinary assertion failures still return healthy clients normally.
         const connectionFailure = primaryError instanceof Error && (
           /^(?:08[0-9A-Z]{3}|57P01|57P02|57P03)$/.test(String((primaryError as Error & { code?: string }).code ?? '')) ||
+          // Optional pg-internal health hint; confined to pool cleanup only.
           (client as BoundaryDatabase & { _queryable?: boolean })._queryable === false
         );
         (client as BoundaryDatabase & { release(error?: Error): void }).release(

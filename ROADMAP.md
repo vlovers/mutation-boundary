@@ -93,7 +93,7 @@ Limitations remain: the cap does not constrain driver query memory or peak proce
 - [x] Identify canonical array accessor and symbol-key risks, shadowed `map` / `toString` / `byteLength`, spoofable `Symbol.toStringTag`, and inherited row identity getters in the current implementation.
 - [x] Merge snapshot-integrity PR #72 with descriptor-based validation and PostgreSQL/pool cleanup regressions (PR CI green; post-merge CI reviewed separately).
 - [ ] Merge and verify the large-fixture, pinned-reader-failure, pool-recovery, and repeatable-read visibility PostgreSQL tests; see [memory/reliability evidence](docs/MEMORY_RELIABILITY.md).
-- [ ] Execute the optional memory profile on an isolated runner and record measurements; no process-wide RSS guarantee is claimed.
+- [x] Execute the optional memory profile on an isolated PostgreSQL CI runner (PR #74, successful run 42020024330); this is not an RSS guarantee.\n- [ ] Record and analyze comparable numeric memory observations from isolated runs before making performance claims.
 - [ ] Measure peak process memory and driver allocations with an isolated profiler before claiming an overall limit; retain the 32 MiB **retained canonical data** wording.
 - [x] Merge release-provenance PR #70 and consolidated engineering standards PR #73; close overlapping #68/#69/#71 drafts.
 
