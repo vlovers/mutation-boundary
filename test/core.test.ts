@@ -394,3 +394,158 @@ test('excluded projection refuses a getter even when it is non-enumerable', asyn
   assert.equal(getterCalls, 0);
   assert.equal(actionCalls, 0);
 });
+
+
+test('nested array index getters are rejected before the test action without invoking getters', async () => {
+  const values = [1, 2];
+  let getterCalls = 0;
+  Object.defineProperty(values, '0', {
+    enumerable: true, configurable: true,
+    get() { getterCalls++; throw new Error('private index getter must not run'); },
+  });
+  let actionCalls = 0;
+  const db = {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      return [{ id: 1, data: { values } }];
+    },
+  };
+  await assert.rejects(assertNoMutation({
+    db, tables, safety, action: async () => { actionCalls++; },
+  }), /unsupported snapshot accessor in table tasks/);
+  assert.equal(getterCalls, 0);
+  assert.equal(actionCalls, 0);
+});
+
+test('non-enumerable array getters are rejected even when their value would be omitted', async () => {
+  const values = [1];
+  let getterCalls = 0;
+  Object.defineProperty(values, 'secret', {
+    enumerable: false,
+    get() { getterCalls++; throw new Error('must not run'); },
+  });
+  const db = {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      return [{ id: 1, values }];
+    },
+  };
+  let actionCalled = false;
+  await assert.rejects(assertNoMutation({
+    db, tables, safety, action: async () => { actionCalled = true; },
+  }), /unsupported snapshot accessor/);
+  assert.equal(getterCalls, 0);
+  assert.equal(actionCalled, false);
+});
+
+test('symbol-keyed arrays fail closed without executing Symbol.toStringTag getters', async () => {
+  const values = [1, 2];
+  let getterCalls = 0;
+  Object.defineProperty(values, Symbol.toStringTag, {
+    get() { getterCalls++; throw new Error('tag getter must not run'); },
+  });
+  const db = {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      return [{ id: 1, values }];
+    },
+  };
+  let called = false;
+  await assert.rejects(assertNoMutation({
+    db, tables, safety, action: async () => { called = true; },
+  }), /unsupported snapshot symbol keys/);
+  assert.equal(getterCalls, 0);
+  assert.equal(called, false);
+});
+
+test('plain objects with Symbol.toStringTag getters never execute the tag getter', async () => {
+  const payload: Row = { state: 'safe' };
+  let getterCalls = 0;
+  Object.defineProperty(payload, Symbol.toStringTag, {
+    get() { getterCalls++; throw new Error('tag getter must not run'); },
+  });
+  const db = {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      return [{ id: 1, payload }];
+    },
+  };
+  let called = false;
+  await assert.rejects(assertNoMutation({
+    db, tables, safety, action: async () => { called = true; },
+  }), /unsupported snapshot symbol keys/);
+  assert.equal(getterCalls, 0);
+  assert.equal(called, false);
+});
+
+test('array holes cannot be disguised as dense arrays using unrelated properties', async () => {
+  const payload: unknown[] & { extra?: string } = [, 2];
+  payload.extra = 'another enumerable key';
+  const db = {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      return [{ id: 1, payload }];
+    },
+  };
+  let called = false;
+  await assert.rejects(assertNoMutation({
+    db, tables, safety, action: async () => { called = true; },
+  }), /unsupported snapshot array/);
+  assert.equal(called, false);
+});
+
+test('overridden array map is never invoked and normal dense arrays still compare correctly', async () => {
+  const payload = [1, 2, 3];
+  let mapCalls = 0;
+  Object.defineProperty(payload, 'map', {
+    enumerable: false,
+    value() { mapCalls++; throw new Error('unsafe map override'); },
+  });
+  let reads = 0;
+  const db = {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      reads++;
+      return [{ id: 1, payload }];
+    },
+  };
+  await assertNoMutation({ db, tables, safety, action: async () => {} });
+  assert.equal(mapCalls, 0);
+  assert.equal(reads, 2);
+  await assert.rejects(assertNoMutation({
+    db, tables, safety, action: async () => { payload[1] = 99; },
+  }), (error: unknown) => {
+    assert.ok(error instanceof MutationBoundaryError);
+    assert.equal(error.counts[0]?.updated, 1);
+    return true;
+  });
+  assert.equal(mapCalls, 0);
+});
+
+test('buffer serializer ignores shadowed toString and still detects binary changes', async () => {
+  const payload = Buffer.from([1, 2, 3]);
+  let stringifyCalls = 0;
+  Object.defineProperty(payload, 'toString', {
+    value() { stringifyCalls++; throw new Error('unsafe Buffer override'); },
+  });
+  const db = {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      return [{ id: 1, payload }];
+    },
+  };
+  await assert.rejects(assertNoMutation({
+    db, tables, safety, action: async () => { payload[2] = 4; },
+  }), (error: unknown) => {
+    assert.ok(error instanceof MutationBoundaryError);
+    assert.equal(error.counts[0]?.updated, 1);
+    return true;
+  });
+  assert.equal(stringifyCalls, 0);
+});
+
+test('native Dates and JSONB-style nested arrays retain canonical unchanged semantics', async () => {
+  const before = [{ id: 1, occurred: new Date('2026-05-01T12:00:00Z'), payload: { data: [1, { b: 2, a: 'a' }] } }];
+  const after = [{ id: 1, occurred: new Date('2026-05-01T12:00:00Z'), payload: { data: [1, { a: 'a', b: 2 }] } }];
+  await assertNoMutation({ db: fakeDb(before, after), tables, safety, action: async () => {} });
+});
