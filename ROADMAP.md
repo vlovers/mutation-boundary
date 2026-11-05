@@ -91,9 +91,11 @@ Limitations remain: the cap does not constrain driver query memory or peak proce
 ## Next reliability package — snapshot integrity (unreleased)
 
 - [x] Identify canonical array accessor and symbol-key risks, shadowed `map` / `toString` / `byteLength`, spoofable `Symbol.toStringTag`, and inherited row identity getters in the current implementation.
-- [ ] Merge a single reviewed correctness PR with descriptor-based validation, matching unit and disposable PostgreSQL tests and failure-path cleanup checks.
-- [ ] Measure serializer/driver memory allocations and large valid workloads before claiming any process-wide memory limit; retain the 32 MiB **retained canonical data** wording.
-- [ ] Consolidate existing #68–#71 engineering standards / release provenance PRs with independent review and no duplicated policy files.
+- [x] Merge snapshot-integrity PR #72 with descriptor-based validation and PostgreSQL/pool cleanup regressions (PR CI green; post-merge CI reviewed separately).
+- [ ] Merge and verify the large-fixture, pinned-reader-failure and pool-recovery PostgreSQL tests; see [memory/reliability evidence](docs/MEMORY_RELIABILITY.md).
+- [ ] Execute the optional memory profile on an isolated runner and record measurements; no process-wide RSS guarantee is claimed.
+- [ ] Measure peak process memory and driver allocations with an isolated profiler before claiming an overall limit; retain the 32 MiB **retained canonical data** wording.
+- [x] Merge release-provenance PR #70 and consolidated engineering standards PR #73; close overlapping #68/#69/#71 drafts.
 
 ## v1.0.0 — stable contract
 
