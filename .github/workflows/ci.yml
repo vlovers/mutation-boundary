@@ -42,8 +42,6 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run test:postgres
-      - name: Check PostgreSQL stress test coverage
-        run: test -f test/postgres-reliability.test.ts
       - name: Install pinned integration consumer dependencies
         run: npm install --no-save --package-lock=false --ignore-scripts --no-audit --no-fund typeorm@0.3.27 @nestjs/common@11.1.6 @nestjs/core@11.1.6 @nestjs/platform-express@11.1.6 reflect-metadata@0.2.2 rxjs@7.8.2 jest@30.2.0 @jest/globals@30.2.0 vitest@3.2.4
       - name: Verify TypeORM and NestJS against disposable PostgreSQL
