@@ -379,3 +379,37 @@ test('real PostgreSQL composite keys distinguish updates from key replacement', 
     await db.end();
   }
 });
+
+
+test('PostgreSQL JSONB nested arrays remain canonical and detect element mutations', async () => {
+  const url = process.env.MUTATION_BOUNDARY_TEST_DATABASE_URL;
+  if (!url) throw new Error('Isolated test database URL required');
+  const db = new pg.Client({ connectionString: url });
+  await db.connect();
+  const safety = {
+    expectedDatabase: 'mutation_boundary_test',
+    expectedUser: 'mutation_boundary_ci',
+    confirmDisposableTestDatabase: true as const,
+  };
+  const tables = [{ name: 'boundary_nested_array_probe', key: 'id' }];
+  try {
+    await assertDisposableDatabase(db, safety);
+    await db.query('CREATE TEMP TABLE boundary_nested_array_probe (id integer PRIMARY KEY, data jsonb NOT NULL)');
+    const initial = { measurements: [{ y: 2, x: 1 }, [null, true, 'тест']], label: 'safe' };
+    await db.query('INSERT INTO boundary_nested_array_probe VALUES (1, $1::jsonb)', [JSON.stringify(initial)]);
+    await assertNoMutation({ db, tables, safety, action: async () => {
+      const reordered = { label: 'safe', measurements: [{ x: 1, y: 2 }, [null, true, 'тест']] };
+      await db.query('UPDATE boundary_nested_array_probe SET data = $1::jsonb WHERE id = 1', [JSON.stringify(reordered)]);
+    } });
+    await assert.rejects(assertNoMutation({ db, tables, safety, action: async () => {
+      await db.query("UPDATE boundary_nested_array_probe SET data = jsonb_set(data, '{measurements,1,1}', 'false'::jsonb) WHERE id = 1");
+    } }), (error: unknown) => {
+      assert.ok(error instanceof MutationBoundaryError);
+      assert.deepEqual(error.counts, [{ table: 'boundary_nested_array_probe', inserted: 0, updated: 1, deleted: 0 }]);
+      assert.doesNotMatch(JSON.stringify(error) + error.message, /тест|measurements|safe/);
+      return true;
+    });
+  } finally {
+    await db.end();
+  }
+});
