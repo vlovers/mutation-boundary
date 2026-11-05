@@ -25,7 +25,19 @@ MutationBoundary measures **net** PostgreSQL row-state differences, not transien
 
 Use Node.js 24+ and npm, not commands borrowed from Bun/pnpm projects. Choose applicable checks from [AGENTS.md](../../AGENTS.md) and [CONTRIBUTING.md](../../CONTRIBUTING.md): `npm run typecheck`, `npm test`, `npm run build`, `npm run check:package`, `npm run test:package-audit`, `npm run test:consumer`; release-specific checks are separate. Docs-only edits may mark runtime tests N/A with a reason, but must validate changed links and commands.
 
-Record the **full base/head/tested SHA**, command, environment, exit code, CI URL, and skipped checks. Do not treat queued, skipped, failed, stale-SHA or mock-only checks as passing. Retain only sanitized artifacts, recording their workflow/run, retention/expiry and how to reproduce evidence if artifacts expire. Revalidate after a material change.
+Record the **full base/head/tested SHA**, command, environment, exit code, CI URL, and skipped checks. Do not treat queued, skipped, failed, stale-SHA or mock-only checks as passing. Revalidate after a material change.
+
+## Evidence artifacts, retention and redaction
+
+For every retained artifact, record the producing Issue/PR, accountable owner, exact tested head SHA, verification command and exit status, environment class (local, disposable PostgreSQL, CI, or consumer), workflow/run URL where applicable, creation date, retention or expiry, and a reproducible regeneration command. Keep this ledger in the parent Issue or PR handoff; a temporary local pathname is not a durable artifact location.
+
+- **Minimize and sanitize:** keep only the smallest reviewable logs, test summaries, coverage, package checks and relevant screenshots. Remove connection URLs, credentials, tokens, row values, primary keys, private SQL parameters, raw driver errors, environment files, and database exports before upload or linking. Do not assume a private artifact is safe for sensitive data.
+- **Disposable PostgreSQL:** evidence must identify the isolated environment class and safety preconditions without exposing the actual connection target or credentials. Never attach snapshots, table dumps or unredacted query traces. A successful mock or static check is not evidence of a live disposable-DB integration run.
+- **Verification states:** distinguish `PASS`, `FAIL`, `NOT RUN`, `N/A`, `QUEUED`, `STALE` and `UNAVAILABLE`. Only a completed check against the stated exact SHA can be reported as passing. Do not use expired artifacts, deleted runs, a different SHA, or an implementer's assertion as current evidence.
+- **Retention and recovery:** note when CI will delete an artifact, whether the reviewer can still access it, and how to regenerate it safely after expiry. Re-check source refs, the current branch, Issue ownership and evidence availability after interruption or a material rebase; do not automatically rerun Actions to manufacture a green result.
+- **Access and approval:** artifacts support review but never grant GitHub privileges, database access, merge approval or npm release authorization. The independent reviewer records which evidence was inspected and which claims remain unverified.
+
+A documentation-only change may report PostgreSQL and package/runtime checks as `N/A` with a concrete reason; it still requires checking changed documentation links and command references.
 
 ## Independent review, recovery and handoff
 
@@ -43,7 +55,7 @@ Owned paths / dependencies / conflicting PRs:
 DB safety, API/package compatibility and rollback:
 Checks actually run (command, exit status, environment, CI URL):
 Disposable PostgreSQL validation (or NOT RUN):
-Sanitized artifacts, retention and reproduction:
+Artifact owner / exact tested SHA / producing command and environment:\nSanitized artifact location / CI run / creation and expiry / safe regeneration:\nEvidence state (PASS, FAIL, NOT RUN, N/A, QUEUED, STALE, UNAVAILABLE):
 Review findings / blocked decisions / next owner:
 Maintainer authorization required for merge or release:
 ```
