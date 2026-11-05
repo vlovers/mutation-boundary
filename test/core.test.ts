@@ -583,3 +583,58 @@ test('binary byteLength overrides cannot execute getters or bypass the 1 MiB bou
   }), /snapshot scalar size limit exceeded/);
   assert.equal(called, false);
 });
+
+
+test('inherited adapter row-key getters never execute and baseline fails closed', async () => {
+  let keyReads = 0;
+  const prototype = Object.create(null, {
+    id: {
+      enumerable: true,
+      get() { keyReads++; throw new Error('inherited key must not execute'); },
+    },
+  }) as Row;
+  const row = Object.assign(Object.create(prototype) as Row, { state: 'present' });
+  let actionCalls = 0;
+  const db = {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      return [row];
+    },
+  };
+  await assert.rejects(assertNoMutation({
+    db, tables, safety, action: async () => { actionCalls++; },
+  }), /missing row key in table tasks/);
+  assert.equal(keyReads, 0);
+  assert.equal(actionCalls, 0);
+});
+
+test('non-enumerable key columns are never used as hidden row identities', async () => {
+  const row: Row = { state: 'present' };
+  Object.defineProperty(row, 'id', { value: 1, enumerable: false });
+  let actionCalls = 0;
+  const db = {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      return [row];
+    },
+  };
+  await assert.rejects(assertNoMutation({
+    db, tables, safety, action: async () => { actionCalls++; },
+  }), /missing row key in table tasks/);
+  assert.equal(actionCalls, 0);
+});
+
+test('ordinary data-key rows still support composite identifiers after key hardening', async () => {
+  const keyTables = [{ name: 'tasks', key: ['tenant_id', 'id'] }];
+  const db = fakeDb(
+    [{ tenant_id: 1, id: 7, state: 'before' }],
+    [{ tenant_id: 1, id: 7, state: 'after' }],
+  );
+  await assert.rejects(assertNoMutation({
+    db, tables: keyTables, safety, action: async () => {},
+  }), (error: unknown) => {
+    assert.ok(error instanceof MutationBoundaryError);
+    assert.equal(error.counts[0]?.updated, 1);
+    return true;
+  });
+});
