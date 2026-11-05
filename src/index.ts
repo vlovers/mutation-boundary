@@ -197,7 +197,15 @@ async function takeBoundarySnapshot(
         if (!(error instanceof Error) || !error.message.startsWith('MutationBoundary: ')) throw error;
         throw new Error(error.message + ` in table ${table.name}`);
       }
-      const parts = columns.map(column => row[column]);
+      // Never resolve a key through the adapter object's prototype: an
+      // inherited getter could execute arbitrary code or fabricate identity.
+      const parts = columns.map(column => {
+        const descriptor = Object.getOwnPropertyDescriptor(row, column);
+        if (!descriptor || !descriptor.enumerable || !('value' in descriptor)) {
+          throw new Error(`MutationBoundary: missing row key in table ${table.name}`);
+        }
+        return descriptor.value;
+      });
       if (parts.some(part => part == null)) throw new Error(`MutationBoundary: missing row key in table ${table.name}`);
       const id = stable(parts);
       if (values.has(id)) throw new Error(`MutationBoundary: duplicate row key in table ${table.name}`);
