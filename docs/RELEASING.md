@@ -1,6 +1,6 @@
 # Release process and historical verification checklist
 
-MutationBoundary v0.4.0 was released on 2026-10-21 (Kyiv local date), with successful tag CI and trusted npm publish workflow. Subsequent versions require independent checks. Package listing: [mutation-boundary on npm](https://www.npmjs.com/package/mutation-boundary).
+MutationBoundary v0.6.0 was released on 2026-10-21 (Kyiv local date), with successful tag CI, trusted npm publishing and subsequent independently installed registry consumer verification. Subsequent versions require independent checks. Package listing: [mutation-boundary on npm](https://www.npmjs.com/package/mutation-boundary).
 
 The library must only be used against disposable, isolated PostgreSQL test databases. The published API is experimental and does not guarantee detection of transient, rolled-back, or concurrent writes.
 
@@ -26,7 +26,7 @@ The package uses `publishConfig.access: public` and currently advertises Node.js
 
 For future releases, prefer npm trusted publishing with GitHub Actions OIDC, explicit minimal workflow permissions, a protected release process and npm provenance. Avoid long-lived npm tokens.
 
-See [README](../README.md), [Safety](SAFETY.md), [Architecture](ARCHITECTURE.md), [Security policy](../SECURITY.md), and [Contributing](../CONTRIBUTING.md).
+See [README](../README.md), [Safety](SAFETY.md), [Architecture](ARCHITECTURE.md), [Security policy](../SECURITY.md), [Contributing](../CONTRIBUTING.md), [engineering review policy](engineering/REVIEW_POLICY.md), and [release checklist](engineering/RELEASE_CHECKLIST.md).
 
 ## Automated future npm releases
 
