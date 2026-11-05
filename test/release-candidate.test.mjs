@@ -7,6 +7,7 @@ import { test } from 'node:test';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const json = name => JSON.parse(readFileSync(resolve(root, name), 'utf8'));
 const text = name => readFileSync(resolve(root, name), 'utf8');
+const STABLE_SEMVER = /^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$/;
 
 test('candidate package and lockfile root versions are identical', () => {
   const pkg = json('package.json');
