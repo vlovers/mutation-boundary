@@ -331,7 +331,16 @@ export async function assertNoMutation(options: AssertNoMutationOptions): Promis
     // but retain the original verification failure when release itself throws.
     if (pool) {
       try {
-        (client as BoundaryDatabase & { release(): void }).release();
+        // A terminated PostgreSQL backend can leave a checked-out pg client
+        // unusable. Tell pg.Pool to discard it instead of recycling it.
+        // Ordinary assertion failures still return healthy clients normally.
+        const connectionFailure = primaryError instanceof Error && (
+          /^(?:08[0-9A-Z]{3}|57P01|57P02|57P03)$/.test(String((primaryError as Error & { code?: string }).code ?? '')) ||
+          (client as BoundaryDatabase & { _queryable?: boolean })._queryable === false
+        );
+        (client as BoundaryDatabase & { release(error?: Error): void }).release(
+          connectionFailure ? primaryError as Error : undefined,
+        );
       } catch (releaseError) {
         if (releaseError instanceof Error && !('cause' in releaseError)) {
           Object.defineProperty(releaseError, 'cause', {
