@@ -10,7 +10,8 @@ The additional `test/postgres-reliability.test.ts` suite runs with `npm run test
 - `includeColumns: ['state']` avoids reading and retaining unselected text payloads and still detects a selected committed update.
 - A large post-action result fails closed while a pinned `pg.Pool` connection is released and the pool remains usable for a narrower read.
 - Loss of the pinned snapshot-reader connection during an action produces an observable failure, not a successful no-mutation assertion; a separate healthy pool connection can subsequently be used.
-- A separately committed writer's row update is detected when it commits **before the after-snapshot**. This is not a concurrent-writer guarantee; arbitrary concurrent activity still makes snapshot comparisons unreliable.
+- A separately committed writer's row update is detected when it commits **before the after-snapshot** under the tested ordinary read-committed workflow. This is not a concurrent-writer guarantee; arbitrary concurrent activity still makes snapshot comparisons unreliable.
+- A caller-supplied `pg.Client` already in a `REPEATABLE READ` transaction **cannot see** another connection's committed update between snapshots. The test intentionally documents this blind spot; do not treat `assertNoMutation` as a transaction-isolation validator. Use a fresh, quiescent test connection and avoid wrapping the assertion in a long-lived repeatable-read transaction.
 
 **Scope:** These are reproducible finite fixtures, not peak-memory load certification. CI is intentionally not fitted with an absolute RSS threshold that would be flaky across runner configurations. The large fixtures use synthetic data only; never point these tests at a shared environment.
 
