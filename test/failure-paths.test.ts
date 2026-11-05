@@ -742,3 +742,41 @@ test('action connection failure does not discard a healthy pinned snapshot reade
   assert.equal(snapshotQueries, 2, 'both pinned-reader snapshots must succeed');
   assert.deepEqual(releases, [[undefined]], 'healthy pinned reader must be reused');
 });
+
+test('unqueryable pooled reader is discarded even when query throws a non-Error value', async () => {
+  const thrown = 'connection closed';
+  const releases: unknown[][] = [];
+  const db = {
+    async connect() {
+      return {
+        _queryable: false,
+        async query(): Promise<Row[]> { throw thrown; },
+        release(...args: unknown[]) { releases.push(args); },
+      };
+    },
+  };
+  await assert.rejects(
+    assertNoMutation({ db, tables, safety, action: async () => {} }),
+    error => error === thrown,
+  );
+  assert.equal(releases.length, 1);
+  assert.ok(releases[0]?.[0] instanceof Error, 'unusable client must be discarded');
+});
+
+test('release failure keeps precedence and retains non-Error verification failure as cause', async () => {
+  const thrown = 'connection closed';
+  const releaseError = new Error('release failed');
+  const db = {
+    async connect() {
+      return {
+        _queryable: false,
+        async query(): Promise<Row[]> { throw thrown; },
+        release() { throw releaseError; },
+      };
+    },
+  };
+  await assert.rejects(
+    assertNoMutation({ db, tables, safety, action: async () => {} }),
+    error => error === releaseError && (error as Error & { cause?: unknown }).cause === thrown,
+  );
+});

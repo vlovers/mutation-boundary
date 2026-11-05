@@ -340,14 +340,17 @@ export async function assertNoMutation(options: AssertNoMutationOptions): Promis
         // A terminated PostgreSQL backend can leave a checked-out pg client
         // unusable. Tell pg.Pool to discard it instead of recycling it.
         // Ordinary assertion failures still return healthy clients normally.
-        const connectionFailure = primaryError instanceof Error && (
-          (readerOperation && /^(?:08[0-9A-Z]{3}|57P01|57P02|57P03)$/.test(String((primaryError as Error & { code?: string }).code ?? ''))) ||
-          // Optional pg-internal health hint; confined to pool cleanup only.
-          (client as BoundaryDatabase & { _queryable?: boolean })._queryable === false
-        );
-        (client as BoundaryDatabase & { release(error?: Error): void }).release(
-          connectionFailure ? primaryError as Error : undefined,
-        );
+        const readerUnqueryable = (client as BoundaryDatabase & { _queryable?: boolean })._queryable === false;
+        const readerConnectionError = readerOperation && primaryError instanceof Error &&
+          /^(?:08[0-9A-Z]{3}|57P01|57P02|57P03)$/.test(
+            String((primaryError as Error & { code?: string }).code ?? ''),
+          );
+        // pg.Pool requires an Error to discard a client. A non-Error throw
+        // must still escape unchanged, even when the pinned reader is unusable.
+        const discardReason = readerUnqueryable || readerConnectionError
+          ? primaryError instanceof Error ? primaryError : new Error('Pinned PostgreSQL reader is unusable')
+          : undefined;
+        (client as BoundaryDatabase & { release(error?: Error): void }).release(discardReason);
       } catch (releaseError) {
         if (releaseError instanceof Error && !('cause' in releaseError)) {
           Object.defineProperty(releaseError, 'cause', {
