@@ -47,6 +47,8 @@ jobs:
       - name: Verify TypeORM and NestJS against disposable PostgreSQL
         run: node --experimental-strip-types --test test/typeorm-nestjs.test.mjs test/nest-http.test.mjs
       - run: npm run build
+      - name: Profile memory with disposable PostgreSQL fixtures
+        run: node scripts/snapshot-memory-profile.mjs
       - name: Run Jest ESM consumer checks
         env:
           NODE_OPTIONS: --experimental-vm-modules --experimental-strip-types
