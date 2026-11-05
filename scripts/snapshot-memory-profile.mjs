@@ -13,7 +13,10 @@ const safety = {
 const db = new pg.Client({ connectionString: url });
 const memory = () => {
   const { rss, heapUsed, external, arrayBuffers } = process.memoryUsage();
-  return { rss, heapUsed, external, arrayBuffers };
+  // Node reports maxRSS as an OS high-water mark in KiB on Linux.
+  // It is cumulative for the process, not a per-fixture peak.
+  const processHighWaterRssKiB = process.resourceUsage().maxRSS;
+  return { rss, heapUsed, external, arrayBuffers, processHighWaterRssKiB };
 };
 const sample = async (label, rows, projection) => {
   await db.query('TRUNCATE boundary_memory_profile');
@@ -58,7 +61,7 @@ try {
   console.log(JSON.stringify({
     kind: 'mutation-boundary-memory-observation',
     node: process.version,
-    note: 'Point-in-time memory samples only; not a peak RSS or driver allocation bound',
+    note: 'Samples are point-in-time; processHighWaterRssKiB is cumulative process high-water, not an isolated fixture or driver-memory limit',
     measurements,
   }, null, 2));
 } finally {
