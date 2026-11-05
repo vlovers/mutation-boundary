@@ -693,6 +693,10 @@ test('array accessor baseline failure does not execute action and releases pinne
 test('pooled connection errors discard broken clients without masking the original failure', async () => {
   for (const scenario of [
     { error: Object.assign(new Error('terminated'), { code: '57P01' }), unqueryable: false, discard: true },
+    { error: Object.assign(new Error('connection failure'), { code: '08006' }), unqueryable: false, discard: true },
+    { error: Object.assign(new Error('backend shutdown'), { code: '57P02' }), unqueryable: false, discard: true },
+    { error: Object.assign(new Error('backend cannot connect'), { code: '57P03' }), unqueryable: false, discard: true },
+    { error: Object.assign(new Error('unique violation'), { code: '23505' }), unqueryable: false, discard: false },
     { error: new Error('closed'), unqueryable: true, discard: true },
     { error: new Error('ordinary snapshot error'), unqueryable: false, discard: false },
   ]) {
