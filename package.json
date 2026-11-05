@@ -24,6 +24,7 @@
     "check:release": "npm run typecheck && npm test && npm run test:release-candidate && npm run test:package-audit && npm run build && npm run check:package && npm run test:consumer",
     "test:registry": "node scripts/registry-smoke.mjs",
     "test:external:postgres": "node scripts/postgres-consumer-smoke.mjs",
+    "profile:memory": "npm run build && node scripts/snapshot-memory-profile.mjs",
     "test:release-candidate": "node --test test/release-candidate.test.mjs"
   },
   "devDependencies": {
