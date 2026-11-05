@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import { performance } from 'node:perf_hooks';
 import pg from 'pg';
 import { assertNoMutation, assertDisposableDatabase } from '../dist/index.js';
@@ -49,6 +50,11 @@ try {
     await sample('aggregate-overflow', 48, false),
     await sample('narrow-projection', 48, true),
   ];
+  assert.deepEqual(
+    measurements.map(({ outcome }) => outcome),
+    ['passed', 'passed', 'aggregate_cap_rejected', 'passed'],
+    'Unexpected snapshot budget behavior in memory profile fixtures',
+  );
   console.log(JSON.stringify({
     kind: 'mutation-boundary-memory-observation',
     node: process.version,
