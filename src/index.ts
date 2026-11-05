@@ -1,3 +1,5 @@
+import { types as nodeTypes } from 'node:util';
+
 /** Minimal adapter: works with pg Pool/Client, TypeORM DataSource and compatible clients. */
 export type BoundaryRow = Record<string, unknown>;
 export type BoundaryDatabase = { query(sql: string, values?: readonly unknown[]): Promise<BoundaryRow[] | { rows: BoundaryRow[] }> };
@@ -21,6 +23,11 @@ type Snapshot = Map<string, Map<string, string>>;
 // Budget retained canonical strings per snapshot across all selected tables.
 // This is not a bound on driver buffers or peak process memory.
 const MAX_SNAPSHOT_BYTES = 32 * 1024 * 1024;
+// Read typed-array size through the built-in brand-checked getter; adapter
+// instances can shadow .byteLength with an arbitrary user-defined getter.
+const typedArrayByteLength = Object.getOwnPropertyDescriptor(
+  Object.getPrototypeOf(Uint8Array.prototype), 'byteLength',
+)!.get!;
 const identifier = (value: string) => {
   if (!/^[a-z_][a-z_0-9]*$/i.test(value)) {
     throw new Error('MutationBoundary: unsafe SQL identifier');
@@ -60,24 +67,34 @@ const stable = (value: unknown): string => {
     if (active.has(part)) throw new Error('MutationBoundary: cyclic snapshot value');
     active.add(part);
     try {
-      if (Object.prototype.toString.call(part) === '[object Date]') {
+      if (nodeTypes.isDate(part)) {
         const date = Date.prototype.toISOString.call(part);
         return 'D' + JSON.stringify(date);
       }
       if (typeof Buffer !== 'undefined' && Buffer.isBuffer(part)) {
-        if (part.byteLength > 1024 * 1024) throw new Error('MutationBoundary: snapshot scalar size limit exceeded');
-        return 'B' + JSON.stringify(part.toString('base64'));
+        if (typedArrayByteLength.call(part) > 1024 * 1024) throw new Error('MutationBoundary: snapshot scalar size limit exceeded');
+        return 'B' + JSON.stringify(Buffer.prototype.toString.call(part, 'base64'));
       }
       if (part instanceof Uint8Array) {
-        if (part.byteLength > 1024 * 1024) throw new Error('MutationBoundary: snapshot scalar size limit exceeded');
+        if (typedArrayByteLength.call(part) > 1024 * 1024) throw new Error('MutationBoundary: snapshot scalar size limit exceeded');
         return 'B' + JSON.stringify(Buffer.from(part).toString('base64'));
       }
       if (Array.isArray(part)) {
         if (part.length > 10000) throw new Error('MutationBoundary: snapshot collection size limit exceeded');
-        if (Object.keys(part).length !== part.length) {
+        // Inspect own data descriptors before reading array elements. Array.map()
+        // would execute index getters and can be overridden by an adapter.
+        if (Object.getOwnPropertySymbols(part).length) {
+          throw new Error('MutationBoundary: unsupported snapshot symbol keys');
+        }
+        const descriptors = Object.getOwnPropertyDescriptors(part);
+        if (Object.values(descriptors).some(descriptor => !('value' in descriptor))) {
+          throw new Error('MutationBoundary: unsupported snapshot accessor');
+        }
+        const keys = Object.keys(part);
+        if (keys.length !== part.length || keys.some((key, index) => key !== String(index))) {
           throw new Error('MutationBoundary: unsupported snapshot array');
         }
-        return '[' + part.map(item => encode(item, depth + 1)).join(',') + ']';
+        return '[' + keys.map(key => encode(descriptors[key].value, depth + 1)).join(',') + ']';
       }
       const prototype = Object.getPrototypeOf(part);
       if (prototype !== Object.prototype && prototype !== null) {
@@ -90,10 +107,12 @@ const stable = (value: unknown): string => {
       if (Object.values(descriptors).some(descriptor => !('value' in descriptor))) {
         throw new Error('MutationBoundary: unsupported snapshot accessor');
       }
-      const entries = Object.entries(part);
+      // Reuse the inspected descriptors instead of reading properties a second
+      // time: no user-defined getters or changed values during projection.
+      const entries = Object.entries(descriptors).filter(([, descriptor]) => descriptor.enumerable);
       if (entries.length > 10000) throw new Error('MutationBoundary: snapshot collection size limit exceeded');
       return '{' + entries.sort(([a], [b]) => a.localeCompare(b))
-        .map(([key, item]) => JSON.stringify(key) + ':' + encode(item, depth + 1)).join(',') + '}';
+        .map(([key, descriptor]) => JSON.stringify(key) + ':' + encode(descriptor.value, depth + 1)).join(',') + '}';
     } finally {
       active.delete(part);
     }
@@ -178,7 +197,15 @@ async function takeBoundarySnapshot(
         if (!(error instanceof Error) || !error.message.startsWith('MutationBoundary: ')) throw error;
         throw new Error(error.message + ` in table ${table.name}`);
       }
-      const parts = columns.map(column => row[column]);
+      // Never resolve a key through the adapter object's prototype: an
+      // inherited getter could execute arbitrary code or fabricate identity.
+      const parts = columns.map(column => {
+        const descriptor = Object.getOwnPropertyDescriptor(row, column);
+        if (!descriptor || !descriptor.enumerable || !('value' in descriptor)) {
+          throw new Error(`MutationBoundary: missing row key in table ${table.name}`);
+        }
+        return descriptor.value;
+      });
       if (parts.some(part => part == null)) throw new Error(`MutationBoundary: missing row key in table ${table.name}`);
       const id = stable(parts);
       if (values.has(id)) throw new Error(`MutationBoundary: duplicate row key in table ${table.name}`);

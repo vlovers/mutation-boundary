@@ -1,4 +1,4 @@
-# Architecture and current v0.4 scope
+# Architecture and current v0.6 scope
 
 MutationBoundary is a small, TypeORM-independent PostgreSQL test assertion library, not an ORM, migration tool or database auditor.
 
@@ -34,9 +34,10 @@ The current implementation is primarily in `src/index.ts` and `src/safety.ts`; t
 1. Never run actions if safety verification or baseline snapshot fails.
 2. No implicit `NODE_ENV` bypass. Exact database/user expectations plus an explicit test-only acknowledgement are required.
 3. Supports safely quoted simple identifiers, optionally `schema.table`, and composite row keys. Rejects arbitrary SQL expressions and quoted/complex names; optional equality filters use bind parameters.
-4. Snapshot size cap must fail closed, not truncate silently.
+4. Snapshot size cap must fail closed, not truncate silently. v0.6 limits retained canonical data to 32 MiB per snapshot, not PostgreSQL driver or total Node.js RSS usage.
 5. Compare net state only; avoid claiming transaction tracing, transient write detection, or full database coverage.
 6. Avoid raw row data in public errors, logs, serialization and normal return values. Audit low-level functions before exposing them in the release.
 7. The high-level assertion pins a pg.Pool client for the identity check and both snapshots; the action may use another connection. A single-connection pool may deadlock. Custom adapters must guarantee stable session identity.
 8. Prefer no runtime dependencies; `pg` is a dev/test dependency.
 9. Keep Estima integration as a separate consumer proof, not a dependency of the library.
+10. Snapshot serialization must use trustworthy native type checks and property descriptors before reading adapter-controlled data. Treat arrays, objects and custom driver values conservatively; ordinary JSONB arrays remain valid. The additional getter hardening described here is part of the next unreleased update.
