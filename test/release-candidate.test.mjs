@@ -16,9 +16,7 @@ test('candidate package and lockfile root versions are identical', () => {
   assert.equal(pkg.name, lock.name);
   assert.equal(pkg.name, lock.packages[''].name);
   assert.match(pkg.version, /^\d+\.\d+\.\d+$/, 'candidate version must be a stable semver release');
-  const [major, minor, patch] = pkg.version.split('.').map(Number);
-  assert.ok([major, minor, patch].every(Number.isSafeInteger));
-  assert.match(text('CHANGELOG.md'), new RegExp(`(?:^|\\n)## (?:v)?${pkg.version.replaceAll('.', '\\.')}(?:\\s|\\u2014|\\u2013)`, 'm'), 'candidate version must have a changelog section');
+  assert.match(text('CHANGELOG.md'), new RegExp(`^## (?:v)?${pkg.version.replaceAll('.', '\\.')}(?:\\s|\\u2014|\\u2013)`, 'm'), 'candidate version must have a changelog section');
 });
 
 test('published release documentation matches v0.6 tag and install instructions', () => {

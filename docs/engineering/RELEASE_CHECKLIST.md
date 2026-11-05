@@ -9,7 +9,8 @@ This checklist applies to MutationBoundary npm releases. It does **not** authori
 - [ ] Verify exact release commit and clean lockfile install on supported Node versions; run typecheck, tests, build, package audit and consumer checks.
 - [ ] Verify PostgreSQL integration and ORM/HTTP consumers only in isolated disposable databases; never run against shared or production data.
 - [ ] Inspect actual packed tarball contents, exports and typings; independently install the tarball in a clean external consumer.
-- [ ] Check package version, lockfile root version, changelog, repository tag and publishing workflow expectations match.
+- [ ] Check package version, lockfile root version, changelog, repository tag and publishing workflow expectations match. The release-candidate test accepts the current package version; it must not be pinned to the last published version. Historical v0.6.0 documentation checks remain historical evidence, not proof of a new release.
+- [ ] Confirm the version bump and candidate changelog section are committed before creating the release tag; do not edit or move an existing tag.
 - [ ] Confirm Actions permissions/pins, registry authentication/provenance and no credentials or row contents are present in artifacts/logs.
 - [ ] Record unresolved limitations (net-state only; no transient/external/concurrent-write guarantee), manual checks and rollback/mitigation.
 - [ ] Get explicit maintainer approval before creating a release or triggering publishing.
