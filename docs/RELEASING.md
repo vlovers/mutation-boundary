@@ -44,3 +44,12 @@ For the next release:
 Already-published `0.1.0`, `0.1.1`, `0.2.0`, `0.3.0`, and `0.4.0` cannot be re-published under the same version. Do not re-run completed publish workflows for existing versions: npm may reject them with a staged-version or immutable-version conflict. Do not change the tag/version mapping to bypass npm's immutable version rule.
 
 This workflow does **not** automatically bump versions or release every commit; publishing is deliberately an explicit version-tag event.
+
+## Additional future-release provenance gate (2026-10-24)
+
+Before installing project dependencies or attempting any publish, the workflow now checks:
+- the requested release tag has the exact `vMAJOR.MINOR.PATCH` form and matches `package.json` and the lockfile root;
+- the checked-out commit resolves to the requested tag, the remote tag object has not moved, and the commit is an ancestor of current `origin/main`;
+- the exact version is **absent** from the live npm registry (network failures and malformed responses fail closed).
+
+Both tag pushes and manual workflow-dispatch retries run the same gate. A retry after successful publication is intentionally rejected: use read-only registry verification rather than republishing. The gate cannot substitute for GitHub tag protection, branch review, npm account controls, or an independent approval. CI runs isolated regression tests of the gate on every push and PR. No package is published from PR CI.
