@@ -4,7 +4,7 @@
 
 - Canonical array snapshots now inspect own data descriptors and ordered dense indices before reading values, rejecting nested index getters, symbol keys, accessors and sparse arrays disguised by unrelated enumerable fields.
 - Replace shadowable `Array.prototype.map`, Buffer `toString` and binary `byteLength` reads with validated intrinsic operations. Ignore spoofed `Symbol.toStringTag` when recognizing genuine Date objects.
-- Reuse own property descriptors during object serialization to avoid rereading adapter-controlled getters.
+- Reuse own property descriptors during object serialization to avoid rereading adapter-controlled getters. Require own enumerable data descriptors for row keys, preventing inherited getter execution or hidden identity fields.
 - Add unit, pool cleanup and disposable PostgreSQL JSONB-array regressions. No new public exports; additional unusual adapter representations intentionally fail closed.
 
 
