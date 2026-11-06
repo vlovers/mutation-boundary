@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased — PostgreSQL reliability and memory characterization
+
+- Add real disposable PostgreSQL tests for the 32 MiB aggregate snapshot limit both before and after the action, selected-column projection on large rows, and subsequent pool reuse.
+- Add PostgreSQL regression tests for pinned reader connection failures, a committed independent writer before the after-snapshot, and the **REPEATABLE READ visibility blind spot** when a caller wraps the snapshot reader in a long-lived transaction; concurrency outside an isolated fixture remains unsupported.
+- Add an optional `npm run profile:memory` command and [memory/reliability methodology](docs/MEMORY_RELIABILITY.md). Its RSS/heap measurements are observations, not a hard memory ceiling.
+- Preserve zero-argument `BoundaryPool.release()` semantics for healthy custom adapters on error paths; pass a discard reason only for an unusable pinned reader. Add explicit adapter-arity regressions.
+- Validate disposable PostgreSQL identity before fixture DDL; mark fixture ownership **only after successful CREATE**, never drop an existing same-name table on failed CREATE, and do not adopt pre-existing schemas for CASCADE cleanup. Add real PostgreSQL negative regressions proving a duplicate table/schema survives failed CREATE and is not adopted for cleanup.
+- No public API or runtime dependency changes. Not yet published.
+
+
 ## Unreleased — next snapshot integrity update (not published)
 
 - Canonical array snapshots now inspect own data descriptors and ordered dense indices before reading values, rejecting nested index getters, symbol keys, accessors and sparse arrays disguised by unrelated enumerable fields.

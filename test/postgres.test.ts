@@ -3,6 +3,21 @@ import { test } from 'node:test';
 import pg from 'pg';
 import { assertNoMutation, MutationBoundaryError, assertDisposableDatabase } from '../src/index.ts';
 
+
+const validatedPools = new WeakSet<pg.Pool>();
+async function createDisposablePoolTable(pool: pg.Pool, safety: Parameters<typeof assertDisposableDatabase>[1], sql: string): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await assertDisposableDatabase(client, safety);
+    // Ownership is established only after CREATE succeeds. Otherwise a
+    // duplicate-table failure must never authorize DROP of the existing table.
+    await client.query(sql);
+    validatedPools.add(pool);
+  } finally {
+    client.release();
+  }
+}
+
 test('PostgreSQL INSERT UPDATE DELETE JSONB and timestamps', async () => {
   const url = process.env.MUTATION_BOUNDARY_TEST_DATABASE_URL;
   if (!url) throw new Error('Isolated test database URL required');
@@ -63,7 +78,7 @@ test('real pg.Pool pins a connection and observes committed changes', async () =
   };
   const table = 'boundary_pool_probe';
   try {
-    await pool.query('CREATE TABLE ' + table + ' (id integer PRIMARY KEY, value text)');
+    await createDisposablePoolTable(pool, safety, 'CREATE TABLE ' + table + ' (id integer PRIMARY KEY, value text)');
     await assert.rejects(
       assertNoMutation({
         db: pool,
@@ -83,7 +98,7 @@ test('real pg.Pool pins a connection and observes committed changes', async () =
     });
     assert.equal(pool.idleCount, pool.totalCount);
   } finally {
-    await pool.query('DROP TABLE IF EXISTS ' + table);
+    if (validatedPools.has(pool)) await pool.query('DROP TABLE IF EXISTS ' + table);
     await pool.end();
   }
 });
@@ -163,14 +178,14 @@ test('single-connection pg.Pool completes when action does not acquire the pool'
     confirmDisposableTestDatabase: true as const,
   };
   try {
-    await pool.query('CREATE TABLE boundary_single_pool_probe (id integer PRIMARY KEY)');
+    await createDisposablePoolTable(pool, safety, 'CREATE TABLE boundary_single_pool_probe (id integer PRIMARY KEY)');
     await assertNoMutation({
       db: pool, tables: [{ name: 'boundary_single_pool_probe', key: 'id' }],
       safety, action: async () => {},
     });
     assert.equal(pool.idleCount, pool.totalCount);
   } finally {
-    await pool.query('DROP TABLE IF EXISTS boundary_single_pool_probe');
+    if (validatedPools.has(pool)) await pool.query('DROP TABLE IF EXISTS boundary_single_pool_probe');
     await pool.end();
   }
 });
@@ -185,9 +200,12 @@ test('schema-qualified tables and composite row keys detect surviving mutations'
     expectedUser: 'mutation_boundary_ci',
     confirmDisposableTestDatabase: true as const,
   };
+  let schemaCreated = false;
   try {
     await assertDisposableDatabase(db, safety);
-    await db.query('CREATE SCHEMA IF NOT EXISTS boundary_v02_test');
+    // Never adopt a pre-existing schema; cleanup uses DROP ... CASCADE.
+    await db.query('CREATE SCHEMA boundary_v02_test');
+    schemaCreated = true;
     await db.query('CREATE TABLE boundary_v02_test.memberships (tenant_id integer NOT NULL, member_id integer NOT NULL, state text NOT NULL, PRIMARY KEY (tenant_id, member_id))');
     await db.query("INSERT INTO boundary_v02_test.memberships VALUES (1, 1, 'active'), (2, 1, 'active')");
     const tables = [{ name: 'boundary_v02_test.memberships', key: ['tenant_id', 'member_id'] }];
@@ -204,8 +222,11 @@ test('schema-qualified tables and composite row keys detect surviving mutations'
       safety, action: async () => { throw new Error('should not run'); },
     }), /unsafe SQL identifier/);
   } finally {
-    await db.query('DROP SCHEMA IF EXISTS boundary_v02_test CASCADE');
-    await db.end();
+    try {
+      if (schemaCreated) await db.query('DROP SCHEMA boundary_v02_test CASCADE');
+    } finally {
+      await db.end();
+    }
   }
 });
 
@@ -275,7 +296,7 @@ test('single-connection pool fails with a bounded timeout when action also acqui
     confirmDisposableTestDatabase: true as const,
   };
   try {
-    await pool.query('CREATE TABLE boundary_pool_contention_probe (id integer PRIMARY KEY)');
+    await createDisposablePoolTable(pool, safety, 'CREATE TABLE boundary_pool_contention_probe (id integer PRIMARY KEY)');
     await assert.rejects(assertNoMutation({
       db: pool,
       tables: [{ name: 'boundary_pool_contention_probe', key: 'id' }],
@@ -291,7 +312,7 @@ test('single-connection pool fails with a bounded timeout when action also acqui
     });
   } finally {
     try {
-      await pool.query('DROP TABLE IF EXISTS boundary_pool_contention_probe');
+      if (validatedPools.has(pool)) await pool.query('DROP TABLE IF EXISTS boundary_pool_contention_probe');
     } finally {
       await pool.end();
     }
@@ -411,5 +432,85 @@ test('PostgreSQL JSONB nested arrays remain canonical and detect element mutatio
     });
   } finally {
     await db.end();
+  }
+});
+
+
+test('existing table survives failed fixture CREATE and no cleanup ownership is acquired', async () => {
+  const url = process.env.MUTATION_BOUNDARY_TEST_DATABASE_URL;
+  if (!url) throw new Error('Isolated test database URL required');
+  const pool = new pg.Pool({ connectionString: url, max: 2 });
+  const safety = {
+    expectedDatabase: 'mutation_boundary_test',
+    expectedUser: 'mutation_boundary_ci',
+    confirmDisposableTestDatabase: true as const,
+  };
+  const table = 'boundary_existing_fixture_probe';
+  let createdByThisTest = false;
+  try {
+    const owner = await pool.connect();
+    try {
+      await assertDisposableDatabase(owner, safety);
+      await owner.query(`CREATE TABLE ${table} (id integer PRIMARY KEY, state text NOT NULL)`);
+      createdByThisTest = true;
+      await owner.query(`INSERT INTO ${table} VALUES (1, 'preserve')`);
+    } finally {
+      owner.release();
+    }
+    await assert.rejects(
+      createDisposablePoolTable(pool, safety, `CREATE TABLE ${table} (id integer PRIMARY KEY)`),
+      (error: unknown) => {
+        assert.equal((error as { code?: string }).code, '42P07');
+        return true;
+      },
+    );
+    assert.equal(validatedPools.has(pool), false, 'failed fixture CREATE must not grant cleanup ownership');
+    // This mimics the guarded fixture cleanup path rather than dropping an
+    // existing object when the attempted CREATE did not succeed.
+    if (validatedPools.has(pool)) await pool.query(`DROP TABLE IF EXISTS ${table}`);
+    const result = await pool.query(`SELECT state FROM ${table} WHERE id = 1`);
+    assert.equal(result.rows[0]?.state, 'preserve');
+  } finally {
+    try {
+      if (createdByThisTest) await pool.query(`DROP TABLE ${table}`);
+    } finally {
+      await pool.end();
+    }
+  }
+});
+
+test('existing PostgreSQL schema survives failed CREATE without CASCADE cleanup', async () => {
+  const url = process.env.MUTATION_BOUNDARY_TEST_DATABASE_URL;
+  if (!url) throw new Error('Isolated test database URL required');
+  const db = new pg.Client({ connectionString: url });
+  await db.connect();
+  const safety = {
+    expectedDatabase: 'mutation_boundary_test',
+    expectedUser: 'mutation_boundary_ci',
+    confirmDisposableTestDatabase: true as const,
+  };
+  const schema = 'boundary_existing_schema_probe';
+  let createdByThisTest = false;
+  let ownedByFailedFixture = false;
+  try {
+    await assertDisposableDatabase(db, safety);
+    await db.query(`CREATE SCHEMA ${schema}`);
+    createdByThisTest = true;
+    await db.query(`CREATE TABLE ${schema}.preserve (id integer PRIMARY KEY)`);
+    await db.query(`INSERT INTO ${schema}.preserve VALUES (1)`);
+    await assert.rejects(db.query(`CREATE SCHEMA ${schema}`), (error: unknown) => {
+      assert.equal((error as { code?: string }).code, '42P06');
+      return true;
+    });
+    // A failed CREATE cannot set the attempted fixture's ownership flag.
+    if (ownedByFailedFixture) await db.query(`DROP SCHEMA ${schema} CASCADE`);
+    const row = await db.query(`SELECT count(*)::integer AS total FROM ${schema}.preserve`);
+    assert.equal(row.rows[0]?.total, 1);
+  } finally {
+    try {
+      if (createdByThisTest) await db.query(`DROP SCHEMA ${schema} CASCADE`);
+    } finally {
+      await db.end();
+    }
   }
 });

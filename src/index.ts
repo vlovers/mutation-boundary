@@ -316,13 +316,40 @@ export async function assertNoMutation(options: AssertNoMutationOptions): Promis
     ); 
   const pool = isPool(db) ? db : undefined; 
   const client = pool ? await pool.connect() : db as BoundaryDatabase;
+  // A checked-out pg client may emit 'error' asynchronously when its backend
+  // dies. Without a temporary listener, EventEmitter would throw outside the
+  // assertion promise. Observe only clients that support removing the listener.
+  const readerEmitter = pool ? client as BoundaryDatabase & {
+    on?: (event: string, listener: (error: unknown) => void) => unknown;
+    removeListener?: (event: string, listener: (error: unknown) => void) => unknown;
+  } : undefined;
+  let readerEventSeen = false;
+  let readerEventError: unknown;
+  const observeReaderError = (error: unknown): void => {
+    if (!readerEventSeen) { readerEventSeen = true; readerEventError = error; }
+  };
+  const observeEvents = Boolean(
+    readerEmitter && typeof readerEmitter.on === 'function' &&
+    typeof readerEmitter.removeListener === 'function',
+  );
+  // Only errors from queries on this pinned reader can identify its connection as broken.
+  // The action may use another connection and its SQLSTATE must not poison this client.
+  let readerOperation = true;
   try {
+    if (observeEvents) readerEmitter!.on!('error', observeReaderError);
     await assertDisposableDatabase(client, safety);
+    if (readerEventSeen) throw readerEventError;
     const before = await takeBoundarySnapshot(client, tables, maxRowsPerTable);
+    if (readerEventSeen) throw readerEventError;
     let actionError: unknown;
     let actionFailed = false;
+    readerOperation = false;
     try { await action(); } catch (error) { actionFailed = true; actionError = error; }
+    readerOperation = true;
+    if (readerEventSeen) throw readerEventError;
     const after = await takeBoundarySnapshot(client, tables, maxRowsPerTable);
+    if (readerEventSeen) throw readerEventError;
+    readerOperation = false;
     const changes = diffBoundarySnapshots(before, after);
     if (changes.length) throw new MutationBoundaryError(changes, tables);
     if (actionFailed) throw actionError;
@@ -331,7 +358,28 @@ export async function assertNoMutation(options: AssertNoMutationOptions): Promis
     // but retain the original verification failure when release itself throws.
     if (pool) {
       try {
-        (client as BoundaryDatabase & { release(): void }).release();
+        // A terminated PostgreSQL backend can leave a checked-out pg client
+        // unusable. Tell pg.Pool to discard it instead of recycling it.
+        // Ordinary assertion failures still return healthy clients normally.
+        const readerUnqueryable = (client as BoundaryDatabase & { _queryable?: boolean })._queryable === false;
+        const readerConnectionError = readerOperation && primaryError instanceof Error &&
+          /^(?:08[0-9A-Z]{3}|57P01|57P02|57P03)$/.test(
+            String((primaryError as Error & { code?: string }).code ?? ''),
+          );
+        // pg.Pool requires an Error to discard a client. A non-Error throw
+        // must still escape unchanged, even when the pinned reader is unusable.
+        const discardReason = readerUnqueryable || readerConnectionError || readerEventSeen
+          ? readerEventSeen && readerEventError instanceof Error ? readerEventError
+            : primaryError instanceof Error ? primaryError : new Error('Pinned PostgreSQL reader is unusable')
+          : undefined;
+        // Keep the public BoundaryPool release() contract intact for healthy
+        // clients: release(undefined) is observably different to adapters that
+        // validate argument count, even though pg.Pool accepts both forms.
+        if (discardReason) {
+          (client as BoundaryDatabase & { release(error?: Error): void }).release(discardReason);
+        } else {
+          (client as BoundaryDatabase & { release(): void }).release();
+        }
       } catch (releaseError) {
         if (releaseError instanceof Error && !('cause' in releaseError)) {
           Object.defineProperty(releaseError, 'cause', {
@@ -345,6 +393,8 @@ export async function assertNoMutation(options: AssertNoMutationOptions): Promis
       }
     }
     throw primaryError;
+  } finally {
+    if (observeEvents) readerEmitter!.removeListener!('error', observeReaderError);
   }
   if (pool) (client as BoundaryDatabase & { release(): void }).release();
 }
