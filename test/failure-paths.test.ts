@@ -966,3 +966,51 @@ test('successful pooled assertions do not leave reader error listeners attached'
   });
   assert.equal(client.listenerCount('error'), 0);
 });
+
+test('pooled success releases with error observation active and removes listener afterward', async () => {
+  let releaseCount = 0;
+  const reader = Object.assign(new EventEmitter(), {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) {
+        return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      }
+      return [{ id: 1, state: 'unchanged' }];
+    },
+    release(...args: unknown[]) {
+      releaseCount++;
+      assert.deepEqual(args, [], 'healthy pool release retains zero-argument contract');
+      assert.equal(reader.listenerCount('error'), 1,
+        'error observer must remain installed while release executes');
+    },
+  });
+  await assertNoMutation({ db: { async connect() { return reader; } }, tables, safety,
+    action: async () => {} });
+  assert.equal(releaseCount, 1);
+  assert.equal(reader.listenerCount('error'), 0, 'temporary observer must be removed after release');
+});
+
+test('successful pooled verification never double-releases when release itself throws', async () => {
+  const releaseFailure = new Error('release rejected');
+  let releases = 0;
+  const reader = Object.assign(new EventEmitter(), {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) {
+        return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      }
+      return [{ id: 1, state: 'unchanged' }];
+    },
+    release() {
+      releases++;
+      assert.equal(reader.listenerCount('error'), 1,
+        'observer must cover the failed release attempt');
+      throw releaseFailure;
+    },
+  });
+  await assert.rejects(
+    assertNoMutation({ db: { async connect() { return reader; } }, tables, safety,
+      action: async () => {} }),
+    error => error === releaseFailure,
+  );
+  assert.equal(releases, 1, 'release is never retried after a synchronous throw');
+  assert.equal(reader.listenerCount('error'), 0, 'observer removed on failed release');
+});

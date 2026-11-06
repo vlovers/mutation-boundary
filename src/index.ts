@@ -332,6 +332,10 @@ export async function assertNoMutation(options: AssertNoMutationOptions): Promis
     readerEmitter && typeof readerEmitter.on === 'function' &&
     typeof readerEmitter.removeListener === 'function',
   );
+  // A client must be released before its temporary error observer is removed.
+  // Track the attempt so a synchronous release failure is not mistaken for a
+  // snapshot failure and cannot trigger an accidental second release.
+  let releaseAttempted = false;
   // Only errors from queries on this pinned reader can identify its connection as broken.
   // The action may use another connection and its SQLSTATE must not poison this client.
   let readerOperation = true;
@@ -353,10 +357,17 @@ export async function assertNoMutation(options: AssertNoMutationOptions): Promis
     const changes = diffBoundarySnapshots(before, after);
     if (changes.length) throw new MutationBoundaryError(changes, tables);
     if (actionFailed) throw actionError;
+    if (pool) {
+      releaseAttempted = true;
+      (client as BoundaryDatabase & { release(): void }).release();
+    }
+    // A synchronous error event emitted during release must never be
+    // interpreted as an assertion success.
+    if (readerEventSeen) throw readerEventError;
   } catch (primaryError) {
     // Preserve the thrown cleanup error and its identity for existing consumers,
     // but retain the original verification failure when release itself throws.
-    if (pool) {
+    if (pool && !releaseAttempted) {
       try {
         // A terminated PostgreSQL backend can leave a checked-out pg client
         // unusable. Tell pg.Pool to discard it instead of recycling it.
@@ -396,5 +407,4 @@ export async function assertNoMutation(options: AssertNoMutationOptions): Promis
   } finally {
     if (observeEvents) readerEmitter!.removeListener!('error', observeReaderError);
   }
-  if (pool) (client as BoundaryDatabase & { release(): void }).release();
 }

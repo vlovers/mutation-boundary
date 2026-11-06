@@ -15,6 +15,10 @@ The public exported API and runtime dependency set stay unchanged. Strict canoni
 
 Use **only isolated disposable, quiescent PostgreSQL**; not production/shared databases.
 
+## Release audit finding — pooled reader cleanup
+
+The candidate review found a gap between removal of the temporary pinned-reader `error` listener and normal `release()`. Runtime now keeps the observer attached through the release attempt; failed release is propagated without a second release attempt, and the observer is then detached. Two unit regressions assert ordering, single release, and listener cleanup. Confirm these on the exact updated head before accepting v0.7.0.
+
 ## Mandatory release gates
 
 - [ ] Authorized independent review of combined runtime, regression tests, CI and publishing changes, including new pinned-reader EventEmitter observation.

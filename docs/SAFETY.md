@@ -21,7 +21,7 @@ await assertNoMutation({
 });
 ```
 
-The confirmation flag and identity checks are **guardrails, not proof of isolation**. A production database can be misnamed. Always provision a disposable database and restricted credentials separately. Never reuse production credentials. The guard checks database name and session user. For supported pg.Pool instances, the assertion checks out one connection for the identity query and both snapshots, and releases it in a finally block. Other custom adapters must guarantee stable connection identity themselves. The action may require a second pool connection; a pool limited to one connection can deadlock.
+The confirmation flag and identity checks are **guardrails, not proof of isolation**. A production database can be misnamed. Always provision a disposable database and restricted credentials separately. Never reuse production credentials. The guard checks database name and session user. For supported pg.Pool instances, the assertion checks out one connection for the identity query and both snapshots. It releases that connection exactly once on success or error and removes its temporary error-event observer after the release attempt. A failed release remains observable; callers must not assume a failed cleanup was successful. Other custom adapters must guarantee stable connection identity themselves. The action may require a second pool connection; a pool limited to one connection can deadlock.
 
 By default `assertNoMutation` reports only table names and counts. It never includes row keys or before/after column values in its own mutation error. However, SQL-driver errors and exceptions thrown by user actions may include sensitive details; sanitize them in your own logging pipeline.
 
