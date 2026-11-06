@@ -2,6 +2,8 @@
 
 **Detect unexpected PostgreSQL writes after an operation that should leave the database unchanged.**
 
+**Engineering governance:** [Agent instructions](AGENTS.md) · [Multi-agent workflow](docs/engineering/MULTI_AGENT_WORKFLOW.md) · [Definition of Done](docs/engineering/DEFINITION_OF_DONE.md) · [Independent review](docs/engineering/REVIEW_POLICY.md) · [Release checklist](docs/engineering/RELEASE_CHECKLIST.md). These are contribution policies, not database isolation or release guarantees.
+
 [![CI](https://github.com/vlovers/mutation-boundary/actions/workflows/ci.yml/badge.svg)](https://github.com/vlovers/mutation-boundary/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![npm version](https://img.shields.io/npm/v/mutation-boundary.svg)](https://www.npmjs.com/package/mutation-boundary)
@@ -22,6 +24,10 @@ See [the real-world failed-request regression walkthrough](docs/EXAMPLE.md) for 
 Ordinary assertions check the status code and expected fields. MutationBoundary checks a different invariant: **no selected database rows changed at all**. It can reveal partial writes in an otherwise failing request without requiring you to predict which column might have changed.
 
 Use focused SQL assertions when only a few specific fields matter. MutationBoundary is useful when multiple related tables must remain untouched.
+
+## v0.7.0 release candidate (not yet published)
+
+The integrated source is prepared for **v0.7.0**. The npm package currently advertised below remains **v0.6.0** until verified Trusted Publishing succeeds. The candidate includes snapshot integrity checks, pooled-reader lifecycle reliability, disposable PostgreSQL regressions, and [observational memory profiling](docs/MEMORY_RELIABILITY.md). See [v0.7.0 release review](docs/V070_RELEASE_REVIEW.md). It does not detect arbitrary concurrent or transient writes or set a process RSS ceiling.
 
 ## Installation
 
@@ -110,7 +116,7 @@ tables: [
 
 Available in v0.2.0.
 
-For executable integration patterns and connection-lifecycle caveats, see [pg.Client and pg.Pool recipes](docs/PG_RECIPES.md) and the [tested compatibility matrix](docs/COMPATIBILITY.md).
+For executable integration patterns and connection-lifecycle caveats, see [pg.Client and pg.Pool recipes](docs/PG_RECIPES.md), the [tested compatibility matrix](docs/COMPATIBILITY.md), and [memory/reliability test methodology](docs/MEMORY_RELIABILITY.md).
 
 ## Machine-readable diagnostics (v0.4.0)
 

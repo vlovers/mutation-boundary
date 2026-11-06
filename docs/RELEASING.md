@@ -35,7 +35,8 @@ The [publish.yml](../.github/workflows/publish.yml) workflow triggers when a ver
 **One-time npm setup (required):** on the `mutation-boundary` npm package settings page, configure Trusted Publisher → GitHub Actions with owner `vlovers`, repository `mutation-boundary`, workflow filename `publish.yml`, and no GitHub environment. OIDC cannot work before this npm-side trust is established.
 
 For the next release:
-0. For each next release, run the external packed-consumer smoke and review exported types; verify `npm pack --dry-run`, disposable PostgreSQL CI, README/CHANGELOG, and lockfile before bumping.
+
+0. For each next release, run the external packed-consumer smoke and review exported types; verify `npm pack --dry-run`, disposable PostgreSQL CI, README/CHANGELOG, and lockfile before bumping. The external PostgreSQL consumer must verify disposable identity **on the DDL connection** and only drop a table successfully created by that test; a failed CREATE must never grant fixture ownership.
 1. Review changes and update version via `npm version patch` (or minor/major), making sure `package-lock.json` matches.
 2. Push the version commit to `main`, await green CI, then push its `vX.Y.Z` tag.
 3. Watch the [publish workflow](https://github.com/vlovers/mutation-boundary/actions/workflows/publish.yml) and verify the new version on npm.

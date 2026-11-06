@@ -13,6 +13,8 @@ MutationBoundary asserts **net PostgreSQL row-state changes** across an awaited 
 - Do not weaken test assertions, skip checks, or invent evidence to obtain a green result.
 - No automatic npm publishing, release tagging, merging, or production deployments.
 
+For Issue-first parallel coordination, isolated worktree ownership, exact-SHA evidence, independent review and recovery, follow [the multi-agent delivery protocol](docs/engineering/MULTI_AGENT_WORKFLOW.md). It does not override database safety or maintainer approval.
+
 ## Delivery workflow
 
 1. **Discover:** inspect current branch, open PRs/issues, implementation, tests, and existing docs. Note existing patterns and any user changes.

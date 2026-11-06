@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { EventEmitter } from 'node:events';
 import { assertNoMutation, MutationBoundaryError, type TableSpec } from '../src/index.ts';
 
 const safety = {
@@ -687,4 +688,329 @@ test('array accessor baseline failure does not execute action and releases pinne
   assert.equal(getterCalls, 0);
   assert.equal(actionCalls, 0);
   assert.equal(releases, 1);
+});
+
+
+test('pooled connection errors discard broken clients without masking the original failure', async () => {
+  for (const scenario of [
+    { error: Object.assign(new Error('terminated'), { code: '57P01' }), unqueryable: false, discard: true },
+    { error: Object.assign(new Error('connection failure'), { code: '08006' }), unqueryable: false, discard: true },
+    { error: Object.assign(new Error('backend shutdown'), { code: '57P02' }), unqueryable: false, discard: true },
+    { error: Object.assign(new Error('backend cannot connect'), { code: '57P03' }), unqueryable: false, discard: true },
+    { error: Object.assign(new Error('unique violation'), { code: '23505' }), unqueryable: false, discard: false },
+    { error: new Error('closed'), unqueryable: true, discard: true },
+    { error: new Error('ordinary snapshot error'), unqueryable: false, discard: false },
+  ]) {
+    const releases: unknown[][] = [];
+    let actions = 0;
+    const db = {
+      async connect() {
+        return {
+          _queryable: !scenario.unqueryable,
+          async query(sql: string): Promise<Row[]> {
+            if (sql.includes('current_database()')) return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+            throw scenario.error;
+          },
+          release(...args: unknown[]) { releases.push(args); },
+        };
+      },
+    };
+    await assert.rejects(assertNoMutation({ db, tables, safety, action: async () => { actions++; } }), error => error === scenario.error);
+    assert.equal(actions, 0);
+    assert.deepEqual(releases, scenario.discard ? [[scenario.error]] : [[]]);
+  }
+});
+
+
+test('action connection failure does not discard a healthy pinned snapshot reader', async () => {
+  const actionError = Object.assign(new Error('action connection lost'), { code: '08006' });
+  const releases: unknown[][] = [];
+  let snapshotQueries = 0;
+  const db = {
+    async connect() {
+      return {
+        _queryable: true,
+        async query(sql: string): Promise<Row[]> {
+          if (sql.includes('current_database()')) return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+          snapshotQueries++;
+          return [{ id: 1, payload: 'unchanged' }];
+        },
+        release(...args: unknown[]) { releases.push(args); },
+      };
+    },
+  };
+  await assert.rejects(assertNoMutation({ db, tables, safety, action: async () => { throw actionError; } }), error => error === actionError);
+  assert.equal(snapshotQueries, 2, 'both pinned-reader snapshots must succeed');
+  assert.deepEqual(releases, [[]], 'healthy pinned reader must be released with zero arguments');
+});
+
+test('unqueryable pooled reader is discarded even when query throws a non-Error value', async () => {
+  const thrown = 'connection closed';
+  const releases: unknown[][] = [];
+  const db = {
+    async connect() {
+      return {
+        _queryable: false,
+        async query(sql: string): Promise<Row[]> {
+          if (sql.includes('current_database()')) return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+          throw thrown;
+        },
+        release(...args: unknown[]) { releases.push(args); },
+      };
+    },
+  };
+  await assert.rejects(
+    assertNoMutation({ db, tables, safety, action: async () => {} }),
+    error => error === thrown,
+  );
+  assert.equal(releases.length, 1);
+  assert.ok(releases[0]?.[0] instanceof Error, 'unusable client must be discarded');
+});
+
+test('release failure keeps precedence and retains non-Error verification failure as cause', async () => {
+  const thrown = 'connection closed';
+  const releaseError = new Error('release failed');
+  const db = {
+    async connect() {
+      return {
+        _queryable: false,
+        async query(sql: string): Promise<Row[]> {
+          if (sql.includes('current_database()')) return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+          throw thrown;
+        },
+        release() { throw releaseError; },
+      };
+    },
+  };
+  await assert.rejects(
+    assertNoMutation({ db, tables, safety, action: async () => {} }),
+    error => error === releaseError && (error as Error & { cause?: unknown }).cause === thrown,
+  );
+});
+
+test('healthy custom pool release() receives no arguments after caller rejection', async () => {
+  const original = new Error('operation failed');
+  let released = 0;
+  let queried = 0;
+  const db = {
+    async connect() {
+      return {
+        async query(sql: string): Promise<Row[]> {
+          if (sql.includes('current_database()')) {
+            return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+          }
+          queried++;
+          return [{ id: 1, state: 'unchanged' }];
+        },
+        release(...args: unknown[]) {
+          assert.equal(args.length, 0, 'BoundaryPool contract is zero-argument release()');
+          released++;
+        },
+      };
+    },
+  };
+  await assert.rejects(
+    assertNoMutation({ db, tables, safety, action: async () => { throw original; } }),
+    error => error === original,
+  );
+  assert.equal(queried, 2, 'both snapshots completed');
+  assert.equal(released, 1);
+});
+
+test('healthy custom pool release() receives no arguments after baseline validation failure', async () => {
+  let released = 0;
+  let actions = 0;
+  const db = {
+    async connect() {
+      return {
+        async query(sql: string): Promise<Row[]> {
+          if (sql.includes('current_database()')) {
+            return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+          }
+          throw new Error('snapshot query must not run');
+        },
+        release(...args: unknown[]) {
+          assert.equal(args.length, 0, 'BoundaryPool contract is zero-argument release()');
+          released++;
+        },
+      };
+    },
+  };
+  await assert.rejects(
+    assertNoMutation({
+      db, tables: [{ name: 'unsafe;table', key: 'id' }], safety,
+      action: async () => { actions++; },
+    }),
+    /unsafe SQL identifier/,
+  );
+  assert.equal(actions, 0);
+  assert.equal(released, 1);
+});
+
+
+test('post-action reader connection failure discards pooled client and overrides a caller exception', async () => {
+  const actionError = Object.assign(new Error('writer connection failed'), { code: '08006' });
+  const readerError = Object.assign(new Error('pinned reader connection failed'), { code: '08006' });
+  const releases: unknown[][] = [];
+  let snapshots = 0;
+  let actions = 0;
+  const db = {
+    async connect() {
+      return {
+        _queryable: true,
+        async query(sql: string): Promise<Row[]> {
+          if (sql.includes('current_database()')) {
+            return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+          }
+          snapshots++;
+          if (snapshots === 1) return [{ id: 1, state: 'unchanged' }];
+          throw readerError;
+        },
+        release(...args: unknown[]) { releases.push(args); },
+      };
+    },
+  };
+  await assert.rejects(
+    assertNoMutation({
+      db, tables, safety,
+      action: async () => { actions++; throw actionError; },
+    }),
+    error => error === readerError,
+    'the second snapshot failure must override an earlier caller exception',
+  );
+  assert.equal(actions, 1, 'baseline must complete before invoking the action');
+  assert.equal(snapshots, 2, 'the post-action snapshot must be attempted');
+  assert.deepEqual(releases, [[readerError]],
+    'only the pinned reader error is passed to release(error)');
+});
+
+test('release failure after a broken post-action reader preserves the snapshot error as cause', async () => {
+  const readerError = Object.assign(new Error('pinned reader lost'), { code: '57P01' });
+  const releaseError = new Error('release failed');
+  const releases: unknown[][] = [];
+  let snapshots = 0;
+  const db = {
+    async connect() {
+      return {
+        _queryable: true,
+        async query(sql: string): Promise<Row[]> {
+          if (sql.includes('current_database()')) {
+            return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+          }
+          snapshots++;
+          if (snapshots === 1) return [{ id: 1, state: 'unchanged' }];
+          throw readerError;
+        },
+        release(...args: unknown[]) {
+          releases.push(args);
+          throw releaseError;
+        },
+      };
+    },
+  };
+  await assert.rejects(
+    assertNoMutation({ db, tables, safety, action: async () => {} }),
+    error => error === releaseError &&
+      (error as Error & { cause?: unknown }).cause === readerError,
+    'cleanup failure keeps precedence but retains the pinned-reader failure',
+  );
+  assert.equal(snapshots, 2);
+  assert.deepEqual(releases, [[readerError]]);
+  assert.equal(Object.prototype.propertyIsEnumerable.call(releaseError, 'cause'), false,
+    'the original query error must not become enumerable in diagnostics');
+});
+
+test('pooled EventEmitter reader error fails closed and listener is removed after discard', async () => {
+  const readerError = Object.assign(new Error('reader backend terminated'), { code: '57P01' });
+  const releaseArgs: unknown[][] = [];
+  let snapshots = 0;
+  const client = Object.assign(new EventEmitter(), {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) {
+        return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      }
+      snapshots++;
+      return [{ id: 1, state: 'unchanged' }];
+    },
+    release(...args: unknown[]) { releaseArgs.push(args); },
+  });
+  let actions = 0;
+  await assert.rejects(assertNoMutation({
+    db: { async connect() { return client; } },
+    tables, safety,
+    action: async () => {
+      actions++;
+      assert.equal(client.listenerCount('error'), 1, 'pinned reader must have a temporary listener');
+      client.emit('error', readerError);
+    },
+  }), error => error === readerError);
+  assert.equal(actions, 1);
+  assert.equal(snapshots, 1, 'do not use a reader after its error event');
+  assert.deepEqual(releaseArgs, [[readerError]], 'discard event-failed reader');
+  assert.equal(client.listenerCount('error'), 0, 'detach temporary listener after cleanup');
+});
+
+test('successful pooled assertions do not leave reader error listeners attached', async () => {
+  const client = Object.assign(new EventEmitter(), {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) {
+        return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      }
+      return [{ id: 1, state: 'unchanged' }];
+    },
+    release() {},
+  });
+  await assertNoMutation({
+    db: { async connect() { return client; } },
+    tables, safety, action: async () => {},
+  });
+  assert.equal(client.listenerCount('error'), 0);
+});
+
+test('pooled success releases with error observation active and removes listener afterward', async () => {
+  let releaseCount = 0;
+  const reader = Object.assign(new EventEmitter(), {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) {
+        return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      }
+      return [{ id: 1, state: 'unchanged' }];
+    },
+    release(...args: unknown[]) {
+      releaseCount++;
+      assert.deepEqual(args, [], 'healthy pool release retains zero-argument contract');
+      assert.equal(reader.listenerCount('error'), 1,
+        'error observer must remain installed while release executes');
+    },
+  });
+  await assertNoMutation({ db: { async connect() { return reader; } }, tables, safety,
+    action: async () => {} });
+  assert.equal(releaseCount, 1);
+  assert.equal(reader.listenerCount('error'), 0, 'temporary observer must be removed after release');
+});
+
+test('successful pooled verification never double-releases when release itself throws', async () => {
+  const releaseFailure = new Error('release rejected');
+  let releases = 0;
+  const reader = Object.assign(new EventEmitter(), {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) {
+        return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      }
+      return [{ id: 1, state: 'unchanged' }];
+    },
+    release() {
+      releases++;
+      assert.equal(reader.listenerCount('error'), 1,
+        'observer must cover the failed release attempt');
+      throw releaseFailure;
+    },
+  });
+  await assert.rejects(
+    assertNoMutation({ db: { async connect() { return reader; } }, tables, safety,
+      action: async () => {} }),
+    error => error === releaseFailure,
+  );
+  assert.equal(releases, 1, 'release is never retried after a synchronous throw');
+  assert.equal(reader.listenerCount('error'), 0, 'observer removed on failed release');
 });

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import pg from 'pg';
-import { assertNoMutation, MutationBoundaryError } from '../src/index.ts';
+import { assertNoMutation, MutationBoundaryError, assertDisposableDatabase } from '../src/index.ts';
 
 const safety = {
   expectedDatabase: 'mutation_boundary_test',
@@ -15,10 +15,25 @@ const connectionString = () => {
   return url;
 };
 
+
+const validatedPools = new WeakSet<pg.Pool>();
+async function createDisposablePoolTable(pool: pg.Pool, sql: string): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await assertDisposableDatabase(client, safety);
+    // Mark only a table actually created by this test for cleanup; if CREATE
+    // fails on a pre-existing table, the test must not drop someone else's data.
+    await client.query(sql);
+    validatedPools.add(pool);
+  } finally {
+    client.release();
+  }
+}
+
 test('committed writes on an independent connection are detected', async () => {
   const pool = new pg.Pool({ connectionString: connectionString(), max: 2, connectionTimeoutMillis: 1000 });
   try {
-    await pool.query('CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
+    await createDisposablePoolTable(pool, 'CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
     await assert.rejects(assertNoMutation({
       db: pool, tables, safety,
       action: async () => {
@@ -41,7 +56,7 @@ test('committed writes on an independent connection are detected', async () => {
     });
     assert.equal(pool.idleCount, pool.totalCount);
   } finally {
-    try { await pool.query('DROP TABLE IF EXISTS boundary_lifecycle_probe'); }
+    try { if (validatedPools.has(pool)) await pool.query('DROP TABLE IF EXISTS boundary_lifecycle_probe'); }
     finally { await pool.end(); }
   }
 });
@@ -50,7 +65,7 @@ test('independent uncommitted writes are invisible until commit', async () => {
   const pool = new pg.Pool({ connectionString: connectionString(), max: 2, connectionTimeoutMillis: 1000 });
   let writer: pg.PoolClient | undefined;
   try {
-    await pool.query('CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
+    await createDisposablePoolTable(pool, 'CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
     writer = await pool.connect();
     await writer.query('BEGIN');
     await assertNoMutation({
@@ -68,7 +83,7 @@ test('independent uncommitted writes are invisible until commit', async () => {
       try { await writer.query('ROLLBACK'); } catch { /* connection may already be closed */ }
       writer.release();
     }
-    try { await pool.query('DROP TABLE IF EXISTS boundary_lifecycle_probe'); }
+    try { if (validatedPools.has(pool)) await pool.query('DROP TABLE IF EXISTS boundary_lifecycle_probe'); }
     finally { await pool.end(); }
   }
 });
@@ -77,6 +92,7 @@ test('savepoint rollback does not trigger a false mutation; released savepoint p
   const db = new pg.Client({ connectionString: connectionString() });
   await db.connect();
   try {
+    await assertDisposableDatabase(db, safety);
     await db.query('CREATE TEMP TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
     await assertNoMutation({
       db, tables, safety,
@@ -117,7 +133,7 @@ test('action error preserves original error when the database net state is uncha
   const pool = new pg.Pool({ connectionString: connectionString(), max: 2, connectionTimeoutMillis: 1000 });
   const sentinel = new Error('caller-owned-action-error');
   try {
-    await pool.query('CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
+    await createDisposablePoolTable(pool, 'CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
     await assert.rejects(assertNoMutation({
       db: pool, tables, safety,
       action: async () => {
@@ -126,7 +142,7 @@ test('action error preserves original error when the database net state is uncha
     }), (error: unknown) => error === sentinel);
     assert.equal(pool.idleCount, pool.totalCount);
   } finally {
-    try { await pool.query('DROP TABLE IF EXISTS boundary_lifecycle_probe'); }
+    try { if (validatedPools.has(pool)) await pool.query('DROP TABLE IF EXISTS boundary_lifecycle_probe'); }
     finally { await pool.end(); }
   }
 });
@@ -135,7 +151,7 @@ test('baseline validation failure must not execute action or retain a pool conne
   const pool = new pg.Pool({ connectionString: connectionString(), max: 2, connectionTimeoutMillis: 1000 });
   let executed = false;
   try {
-    await pool.query('CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
+    await createDisposablePoolTable(pool, 'CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
     await assert.rejects(assertNoMutation({
       db: pool, tables: [{ name: 'boundary_lifecycle_probe;DROP', key: 'id' }],
       safety, action: async () => { executed = true; },
@@ -143,7 +159,7 @@ test('baseline validation failure must not execute action or retain a pool conne
     assert.equal(executed, false);
     assert.equal(pool.idleCount, pool.totalCount);
   } finally {
-    try { await pool.query('DROP TABLE IF EXISTS boundary_lifecycle_probe'); }
+    try { if (validatedPools.has(pool)) await pool.query('DROP TABLE IF EXISTS boundary_lifecycle_probe'); }
     finally { await pool.end(); }
   }
 });
@@ -151,7 +167,7 @@ test('baseline validation failure must not execute action or retain a pool conne
 test('pool exhaustion times out, releases snapshot connection, and subsequently recovers', async () => {
   const pool = new pg.Pool({ connectionString: connectionString(), max: 1, connectionTimeoutMillis: 200 });
   try {
-    await pool.query('CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
+    await createDisposablePoolTable(pool, 'CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
     await assert.rejects(assertNoMutation({
       db: pool, tables, safety,
       action: async () => { await pool.query('SELECT 1'); },
@@ -160,7 +176,7 @@ test('pool exhaustion times out, releases snapshot connection, and subsequently 
     await assertNoMutation({ db: pool, tables, safety, action: async () => {} });
     assert.equal(pool.idleCount, pool.totalCount);
   } finally {
-    try { await pool.query('DROP TABLE IF EXISTS boundary_lifecycle_probe'); }
+    try { if (validatedPools.has(pool)) await pool.query('DROP TABLE IF EXISTS boundary_lifecycle_probe'); }
     finally { await pool.end(); }
   }
 });
@@ -169,7 +185,7 @@ test('pool exhaustion times out, releases snapshot connection, and subsequently 
 test('committed UPDATE and DELETE survive action exceptions and report aggregate counts', async () => {
   const pool = new pg.Pool({ connectionString: connectionString(), max: 2, connectionTimeoutMillis: 1000 });
   try {
-    await pool.query('CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
+    await createDisposablePoolTable(pool, 'CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
     await pool.query("INSERT INTO boundary_lifecycle_probe VALUES (1, 'before'), (2, 'before')");
     await assert.rejects(assertNoMutation({
       db: pool, tables, safety,
@@ -187,7 +203,7 @@ test('committed UPDATE and DELETE survive action exceptions and report aggregate
     assert.equal(pool.idleCount, pool.totalCount);
     await assertNoMutation({ db: pool, tables, safety, action: async () => {} });
   } finally {
-    try { await pool.query('DROP TABLE IF EXISTS boundary_lifecycle_probe'); }
+    try { if (validatedPools.has(pool)) await pool.query('DROP TABLE IF EXISTS boundary_lifecycle_probe'); }
     finally { await pool.end(); }
   }
 });
@@ -196,7 +212,7 @@ test('transaction rollback after a rejected action leaves no detected net change
   const pool = new pg.Pool({ connectionString: connectionString(), max: 2, connectionTimeoutMillis: 1000 });
   const sentinel = new Error('original action failure');
   try {
-    await pool.query('CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
+    await createDisposablePoolTable(pool, 'CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
     await assert.rejects(assertNoMutation({
       db: pool, tables, safety,
       action: async () => {
@@ -215,7 +231,7 @@ test('transaction rollback after a rejected action leaves no detected net change
     assert.equal(result.rows[0]?.n, 0);
     assert.equal(pool.idleCount, pool.totalCount);
   } finally {
-    try { await pool.query('DROP TABLE IF EXISTS boundary_lifecycle_probe'); }
+    try { if (validatedPools.has(pool)) await pool.query('DROP TABLE IF EXISTS boundary_lifecycle_probe'); }
     finally { await pool.end(); }
   }
 });
@@ -223,7 +239,7 @@ test('transaction rollback after a rejected action leaves no detected net change
 test('unsupported post-action PostgreSQL row cap fails and pool remains reusable', async () => {
   const pool = new pg.Pool({ connectionString: connectionString(), max: 2, connectionTimeoutMillis: 1000 });
   try {
-    await pool.query('CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
+    await createDisposablePoolTable(pool, 'CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
     await assert.rejects(assertNoMutation({
       db: pool, tables, safety, maxRowsPerTable: 1,
       action: async () => {
@@ -234,7 +250,7 @@ test('unsupported post-action PostgreSQL row cap fails and pool remains reusable
     await assertNoMutation({ db: pool, tables, safety, maxRowsPerTable: 2, action: async () => {} });
     assert.equal(pool.idleCount, pool.totalCount);
   } finally {
-    try { await pool.query('DROP TABLE IF EXISTS boundary_lifecycle_probe'); }
+    try { if (validatedPools.has(pool)) await pool.query('DROP TABLE IF EXISTS boundary_lifecycle_probe'); }
     finally { await pool.end(); }
   }
 });

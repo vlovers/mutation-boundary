@@ -1,12 +1,16 @@
 # Changelog
 
-## Unreleased — next snapshot integrity update (not published)
+## 0.7.0 — snapshot integrity and PostgreSQL reliability (release candidate; NOT PUBLISHED)
 
-- Canonical array snapshots now inspect own data descriptors and ordered dense indices before reading values, rejecting nested index getters, symbol keys, accessors and sparse arrays disguised by unrelated enumerable fields.
-- Replace shadowable `Array.prototype.map`, Buffer `toString` and binary `byteLength` reads with validated intrinsic operations. Ignore spoofed `Symbol.toStringTag` when recognizing genuine Date objects.
-- Reuse own property descriptors during object serialization to avoid rereading adapter-controlled getters. Require own enumerable data descriptors for row keys, preventing inherited getter execution or hidden identity fields.
-- Add unit, pool cleanup and disposable PostgreSQL JSONB-array regressions. No new public exports; additional unusual adapter representations intentionally fail closed.
+- Reject unsafe snapshot representations: accessors, symbol keys, sparse arrays, spoofed Date tags, shadowed Buffer/array methods and inherited row identifiers.
+- Observe asynchronous error events on pinned pooled readers; discard unusable connections and remove temporary listeners on cleanup. Preserve error precedence.
+- Expand real disposable PostgreSQL tests: SQLSTATE 23505/08006/57P01, writer transaction rollback, pool recovery, REPEATABLE READ visibility limits and fixture ownership safety.
+- Verify baseline/post-action 32 MiB retained-canonical-data budget on large fixtures, plus narrow projections and observational `npm run profile:memory` (not an RSS ceiling).
+- Deduplicate GitHub Actions PR/main runs and codify contributor/reviewer and reproducible evidence procedures.
+- Make release-candidate validation version-neutral while preserving historical v0.6.0 provenance.
+- No new public exports or runtime dependencies; stricter validation intentionally fails closed on unusual adapters.
 
+**Publication status:** not released. Historical v0.6.0 npm installation guidance remains in README until v0.7.0 Trusted Publishing and registry verification have succeeded.
 
 ## 0.6.0 — reliability hardening (published via npm workflow 2026-10-21)
 
