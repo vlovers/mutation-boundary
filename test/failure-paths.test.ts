@@ -716,7 +716,7 @@ test('pooled connection errors discard broken clients without masking the origin
     };
     await assert.rejects(assertNoMutation({ db, tables, safety, action: async () => { actions++; } }), error => error === scenario.error);
     assert.equal(actions, 0);
-    assert.deepEqual(releases, [[scenario.discard ? scenario.error : undefined]]);
+    assert.deepEqual(releases, scenario.discard ? [[scenario.error]] : [[]]);
   }
 });
 
@@ -740,7 +740,7 @@ test('action connection failure does not discard a healthy pinned snapshot reade
   };
   await assert.rejects(assertNoMutation({ db, tables, safety, action: async () => { throw actionError; } }), error => error === actionError);
   assert.equal(snapshotQueries, 2, 'both pinned-reader snapshots must succeed');
-  assert.deepEqual(releases, [[undefined]], 'healthy pinned reader must be reused');
+  assert.deepEqual(releases, [[]], 'healthy pinned reader must be released with zero arguments');
 });
 
 test('unqueryable pooled reader is discarded even when query throws a non-Error value', async () => {
@@ -785,4 +785,63 @@ test('release failure keeps precedence and retains non-Error verification failur
     assertNoMutation({ db, tables, safety, action: async () => {} }),
     error => error === releaseError && (error as Error & { cause?: unknown }).cause === thrown,
   );
+});
+
+test('healthy custom pool release() receives no arguments after caller rejection', async () => {
+  const original = new Error('operation failed');
+  let released = 0;
+  let queried = 0;
+  const db = {
+    async connect() {
+      return {
+        async query(sql: string): Promise<Row[]> {
+          if (sql.includes('current_database()')) {
+            return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+          }
+          queried++;
+          return [{ id: 1, state: 'unchanged' }];
+        },
+        release(...args: unknown[]) {
+          assert.equal(args.length, 0, 'BoundaryPool contract is zero-argument release()');
+          released++;
+        },
+      };
+    },
+  };
+  await assert.rejects(
+    assertNoMutation({ db, tables, safety, action: async () => { throw original; } }),
+    error => error === original,
+  );
+  assert.equal(queried, 2, 'both snapshots completed');
+  assert.equal(released, 1);
+});
+
+test('healthy custom pool release() receives no arguments after baseline validation failure', async () => {
+  let released = 0;
+  let actions = 0;
+  const db = {
+    async connect() {
+      return {
+        async query(sql: string): Promise<Row[]> {
+          if (sql.includes('current_database()')) {
+            return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+          }
+          throw new Error('snapshot query must not run');
+        },
+        release(...args: unknown[]) {
+          assert.equal(args.length, 0, 'BoundaryPool contract is zero-argument release()');
+          released++;
+        },
+      };
+    },
+  };
+  await assert.rejects(
+    assertNoMutation({
+      db, tables: [{ name: 'unsafe;table', key: 'id' }], safety,
+      action: async () => { actions++; },
+    }),
+    /unsafe SQL identifier/,
+  );
+  assert.equal(actions, 0);
+  assert.equal(released, 1);
 });

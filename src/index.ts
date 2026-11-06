@@ -350,7 +350,14 @@ export async function assertNoMutation(options: AssertNoMutationOptions): Promis
         const discardReason = readerUnqueryable || readerConnectionError
           ? primaryError instanceof Error ? primaryError : new Error('Pinned PostgreSQL reader is unusable')
           : undefined;
-        (client as BoundaryDatabase & { release(error?: Error): void }).release(discardReason);
+        // Keep the public BoundaryPool release() contract intact for healthy
+        // clients: release(undefined) is observably different to adapters that
+        // validate argument count, even though pg.Pool accepts both forms.
+        if (discardReason) {
+          (client as BoundaryDatabase & { release(error?: Error): void }).release(discardReason);
+        } else {
+          (client as BoundaryDatabase & { release(): void }).release();
+        }
       } catch (releaseError) {
         if (releaseError instanceof Error && !('cause' in releaseError)) {
           Object.defineProperty(releaseError, 'cause', {
