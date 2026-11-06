@@ -166,12 +166,29 @@ test('real PostgreSQL: committed concurrent writer is visible only after it fini
       db: pool, tables: [{ name: table, key: 'id' }], safety,
       action: async () => {
         const writer = await pool.connect();
+        let transactionStarted = false;
+        let discardWriter: Error | undefined;
         try {
           await writer.query('BEGIN');
+          transactionStarted = true;
           await writer.query(`UPDATE ${table} SET state = 'after' WHERE id = 1`);
           await writer.query('COMMIT');
+          transactionStarted = false;
+        } catch (error) {
+          if (transactionStarted) {
+            try {
+              await writer.query('ROLLBACK');
+            } catch (rollbackError) {
+              // Never return a connection with unknown transaction state to
+              // the pool. Preserve the original SQL failure from the action.
+              discardWriter = rollbackError instanceof Error
+                ? rollbackError : new Error('Writer rollback failed');
+            }
+          }
+          throw error;
         } finally {
-          writer.release();
+          if (discardWriter) writer.release(discardWriter);
+          else writer.release();
         }
       },
     }), error => {
@@ -180,6 +197,63 @@ test('real PostgreSQL: committed concurrent writer is visible only after it fini
       return true;
     });
     assert.equal(pool.idleCount, pool.totalCount);
+  } finally {
+    try { if (fixtureCreated) await pool.query(`DROP TABLE IF EXISTS ${table}`); }
+    finally { await pool.end(); }
+  }
+});
+
+
+test('real pg.Pool: failed writer transaction rolls back and leaves the pool reusable', async () => {
+  const pool = new pg.Pool({
+    connectionString: connectionString(), max: 2, connectionTimeoutMillis: 2500,
+  });
+  const table = 'boundary_writer_failure_probe';
+  let fixtureCreated = false;
+  try {
+    await createDisposablePoolTable(pool, `CREATE TABLE ${table} (id integer PRIMARY KEY, state text NOT NULL)`);
+    fixtureCreated = true;
+    await pool.query(`INSERT INTO ${table} VALUES (1, 'before')`);
+    const expectedCode = '23505';
+    await assert.rejects(assertNoMutation({
+      db: pool, tables: [{ name: table, key: 'id' }], safety,
+      action: async () => {
+        const writer = await pool.connect();
+        let transactionStarted = false;
+        let discardWriter: Error | undefined;
+        try {
+          await writer.query('BEGIN');
+          transactionStarted = true;
+          // The first update must be rolled back after the duplicate-key error.
+          await writer.query(`UPDATE ${table} SET state = 'temporary' WHERE id = 1`);
+          await writer.query(`INSERT INTO ${table} VALUES (1, 'duplicate')`);
+          await writer.query('COMMIT');
+          transactionStarted = false;
+        } catch (error) {
+          if (transactionStarted) {
+            try { await writer.query('ROLLBACK'); }
+            catch (rollbackError) {
+              discardWriter = rollbackError instanceof Error
+                ? rollbackError : new Error('Writer rollback failed');
+            }
+          }
+          throw error;
+        } finally {
+          if (discardWriter) writer.release(discardWriter);
+          else writer.release();
+        }
+      },
+    }), (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.equal((error as Error & { code?: string }).code, expectedCode);
+      return true;
+    });
+    const result = await pool.query(`SELECT state FROM ${table} WHERE id = 1`);
+    assert.equal(result.rows[0]?.state, 'before', 'the rejected transaction must not leave a net write');
+    assert.equal(pool.idleCount, pool.totalCount, 'both pooled connections must be returned');
+    await assertNoMutation({
+      db: pool, tables: [{ name: table, key: 'id' }], safety, action: async () => {},
+    });
   } finally {
     try { if (fixtureCreated) await pool.query(`DROP TABLE IF EXISTS ${table}`); }
     finally { await pool.end(); }
