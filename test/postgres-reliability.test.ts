@@ -14,6 +14,18 @@ const safety = {
   confirmDisposableTestDatabase: true as const,
 };
 
+// Only a successful CREATE on a safety-validated connection establishes fixture ownership.
+// A duplicate-table failure must never authorize cleanup of a pre-existing object.
+async function createDisposablePoolTable(pool: pg.Pool, sql: string): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await assertDisposableDatabase(client, safety);
+    await client.query(sql);
+  } finally {
+    client.release();
+  }
+}
+
 // Uses 48 unique 700kB text values: cumulative retained canonical data exceeds
 // 32 MiB while every individual scalar remains below the 1 MiB value limit.
 const oversizedRowsSql = `
@@ -67,10 +79,7 @@ test('real pg.Pool: post-action aggregate overflow releases pin and pool stays r
   const table = 'boundary_after_budget_probe';
   let fixtureCreated = false;
   try {
-    const safetyClient = await pool.connect();
-    try { await assertDisposableDatabase(safetyClient, safety); }
-    finally { safetyClient.release(); }
-    await pool.query(`CREATE TABLE ${table} (id integer PRIMARY KEY, payload text NOT NULL)`);
+    await createDisposablePoolTable(pool, `CREATE TABLE ${table} (id integer PRIMARY KEY, payload text NOT NULL)`);
     fixtureCreated = true;
     const tables = [{ name: table, key: 'id' }];
     await assert.rejects(assertNoMutation({
@@ -103,10 +112,7 @@ test('real pg.Pool: failure of the pinned reader connection fails closed and a f
   const poolErrors: Error[] = [];
   pool.on('error', error => { poolErrors.push(error); });
   try {
-    const safetyClient = await pool.connect();
-    try { await assertDisposableDatabase(safetyClient, safety); }
-    finally { safetyClient.release(); }
-    await pool.query(`CREATE TABLE ${table} (id integer PRIMARY KEY, state text NOT NULL)`);
+    await createDisposablePoolTable(pool, `CREATE TABLE ${table} (id integer PRIMARY KEY, state text NOT NULL)`);
     fixtureCreated = true;
     await pool.query(`INSERT INTO ${table} VALUES (1, 'initial')`);
     // The pool has another connection available for the action, and the
@@ -153,10 +159,7 @@ test('real PostgreSQL: committed concurrent writer is visible only after it fini
   const table = 'boundary_concurrent_writer_probe';
   let fixtureCreated = false;
   try {
-    const safetyClient = await pool.connect();
-    try { await assertDisposableDatabase(safetyClient, safety); }
-    finally { safetyClient.release(); }
-    await pool.query(`CREATE TABLE ${table} (id integer PRIMARY KEY, state text NOT NULL)`);
+    await createDisposablePoolTable(pool, `CREATE TABLE ${table} (id integer PRIMARY KEY, state text NOT NULL)`);
     fixtureCreated = true;
     await pool.query(`INSERT INTO ${table} VALUES (1, 'before')`);
     await assert.rejects(assertNoMutation({
@@ -188,10 +191,12 @@ test('real PostgreSQL: pre-existing REPEATABLE READ transaction cannot observe a
   const reader = new pg.Client({ connectionString: connectionString() });
   const writer = new pg.Client({ connectionString: connectionString() });
   const table = 'boundary_repeatable_read_probe';
+  let fixtureCreated = false;
   await reader.connect();
   try {
     await assertDisposableDatabase(reader, safety);
     await reader.query(`CREATE TABLE ${table} (id integer PRIMARY KEY, state text NOT NULL)`);
+    fixtureCreated = true;
     await reader.query(`INSERT INTO ${table} VALUES (1, 'before')`);
     await writer.connect();
     await assertDisposableDatabase(writer, safety);
@@ -218,7 +223,7 @@ test('real PostgreSQL: pre-existing REPEATABLE READ transaction cannot observe a
     assert.equal(visible.rows[0]?.state, 'after', 'committed writer must be visible after rollback');
   } finally {
     try {
-      await reader.query(`DROP TABLE IF EXISTS ${table}`);
+      if (fixtureCreated) await reader.query(`DROP TABLE IF EXISTS ${table}`);
     } finally {
       await reader.end();
       await writer.end().catch(() => {});
