@@ -3,6 +3,18 @@ import { test } from 'node:test';
 import pg from 'pg';
 import { assertNoMutation, MutationBoundaryError, assertDisposableDatabase } from '../src/index.ts';
 
+
+const validatedPools = new WeakSet<pg.Pool>();
+async function validateDisposablePool(pool: pg.Pool, safety: Parameters<typeof assertDisposableDatabase>[1]): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await assertDisposableDatabase(client, safety);
+    validatedPools.add(pool);
+  } finally {
+    client.release();
+  }
+}
+
 test('PostgreSQL INSERT UPDATE DELETE JSONB and timestamps', async () => {
   const url = process.env.MUTATION_BOUNDARY_TEST_DATABASE_URL;
   if (!url) throw new Error('Isolated test database URL required');
@@ -63,6 +75,7 @@ test('real pg.Pool pins a connection and observes committed changes', async () =
   };
   const table = 'boundary_pool_probe';
   try {
+    await validateDisposablePool(pool, safety);
     await pool.query('CREATE TABLE ' + table + ' (id integer PRIMARY KEY, value text)');
     await assert.rejects(
       assertNoMutation({
@@ -83,7 +96,7 @@ test('real pg.Pool pins a connection and observes committed changes', async () =
     });
     assert.equal(pool.idleCount, pool.totalCount);
   } finally {
-    await pool.query('DROP TABLE IF EXISTS ' + table);
+    if (validatedPools.has(pool)) await pool.query('DROP TABLE IF EXISTS ' + table);
     await pool.end();
   }
 });
@@ -163,6 +176,7 @@ test('single-connection pg.Pool completes when action does not acquire the pool'
     confirmDisposableTestDatabase: true as const,
   };
   try {
+    await validateDisposablePool(pool, safety);
     await pool.query('CREATE TABLE boundary_single_pool_probe (id integer PRIMARY KEY)');
     await assertNoMutation({
       db: pool, tables: [{ name: 'boundary_single_pool_probe', key: 'id' }],
@@ -170,7 +184,7 @@ test('single-connection pg.Pool completes when action does not acquire the pool'
     });
     assert.equal(pool.idleCount, pool.totalCount);
   } finally {
-    await pool.query('DROP TABLE IF EXISTS boundary_single_pool_probe');
+    if (validatedPools.has(pool)) await pool.query('DROP TABLE IF EXISTS boundary_single_pool_probe');
     await pool.end();
   }
 });
@@ -275,6 +289,7 @@ test('single-connection pool fails with a bounded timeout when action also acqui
     confirmDisposableTestDatabase: true as const,
   };
   try {
+    await validateDisposablePool(pool, safety);
     await pool.query('CREATE TABLE boundary_pool_contention_probe (id integer PRIMARY KEY)');
     await assert.rejects(assertNoMutation({
       db: pool,
@@ -291,7 +306,7 @@ test('single-connection pool fails with a bounded timeout when action also acqui
     });
   } finally {
     try {
-      await pool.query('DROP TABLE IF EXISTS boundary_pool_contention_probe');
+      if (validatedPools.has(pool)) await pool.query('DROP TABLE IF EXISTS boundary_pool_contention_probe');
     } finally {
       await pool.end();
     }
