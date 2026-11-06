@@ -63,6 +63,7 @@ jobs:
           npm --version
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm run typecheck
+      - run: npm run test:release-candidate
       - run: npm test
       - run: npm run test:postgres
       - run: npm run build
