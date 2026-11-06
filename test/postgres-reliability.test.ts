@@ -122,9 +122,8 @@ test('real pg.Pool: failure of the pinned reader connection fails closed and a f
     const adapter = {
       async connect() {
         const client = await pool.connect();
-        // Checked-out clients can emit an error when their backend dies.
-        // The assertion still must reject on its after-snapshot query.
-        client.on('error', () => {});
+        // Do not install an application-side error listener: the boundary
+        // must safely observe a failed pinned reader itself.
         const pid = await client.query('SELECT pg_backend_pid()::integer AS pid');
         readerPid = pid.rows[0]?.pid;
         return client;

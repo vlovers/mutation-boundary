@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { EventEmitter } from 'node:events';
 import { assertNoMutation, MutationBoundaryError, type TableSpec } from '../src/index.ts';
 
 const safety = {
@@ -917,4 +918,51 @@ test('release failure after a broken post-action reader preserves the snapshot e
   assert.deepEqual(releases, [[readerError]]);
   assert.equal(Object.prototype.propertyIsEnumerable.call(releaseError, 'cause'), false,
     'the original query error must not become enumerable in diagnostics');
+});
+
+test('pooled EventEmitter reader error fails closed and listener is removed after discard', async () => {
+  const readerError = Object.assign(new Error('reader backend terminated'), { code: '57P01' });
+  const releaseArgs: unknown[][] = [];
+  let snapshots = 0;
+  const client = Object.assign(new EventEmitter(), {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) {
+        return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      }
+      snapshots++;
+      return [{ id: 1, state: 'unchanged' }];
+    },
+    release(...args: unknown[]) { releaseArgs.push(args); },
+  });
+  let actions = 0;
+  await assert.rejects(assertNoMutation({
+    db: { async connect() { return client; } },
+    tables, safety,
+    action: async () => {
+      actions++;
+      assert.equal(client.listenerCount('error'), 1, 'pinned reader must have a temporary listener');
+      client.emit('error', readerError);
+    },
+  }), error => error === readerError);
+  assert.equal(actions, 1);
+  assert.equal(snapshots, 1, 'do not use a reader after its error event');
+  assert.deepEqual(releaseArgs, [[readerError]], 'discard event-failed reader');
+  assert.equal(client.listenerCount('error'), 0, 'detach temporary listener after cleanup');
+});
+
+test('successful pooled assertions do not leave reader error listeners attached', async () => {
+  const client = Object.assign(new EventEmitter(), {
+    async query(sql: string): Promise<Row[]> {
+      if (sql.includes('current_database()')) {
+        return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+      }
+      return [{ id: 1, state: 'unchanged' }];
+    },
+    release() {},
+  });
+  await assertNoMutation({
+    db: { async connect() { return client; } },
+    tables, safety, action: async () => {},
+  });
+  assert.equal(client.listenerCount('error'), 0);
 });
