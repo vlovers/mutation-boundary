@@ -845,3 +845,76 @@ test('healthy custom pool release() receives no arguments after baseline validat
   assert.equal(actions, 0);
   assert.equal(released, 1);
 });
+
+
+test('post-action reader connection failure discards pooled client and overrides a caller exception', async () => {
+  const actionError = Object.assign(new Error('writer connection failed'), { code: '08006' });
+  const readerError = Object.assign(new Error('pinned reader connection failed'), { code: '08006' });
+  const releases: unknown[][] = [];
+  let snapshots = 0;
+  let actions = 0;
+  const db = {
+    async connect() {
+      return {
+        _queryable: true,
+        async query(sql: string): Promise<Row[]> {
+          if (sql.includes('current_database()')) {
+            return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+          }
+          snapshots++;
+          if (snapshots === 1) return [{ id: 1, state: 'unchanged' }];
+          throw readerError;
+        },
+        release(...args: unknown[]) { releases.push(args); },
+      };
+    },
+  };
+  await assert.rejects(
+    assertNoMutation({
+      db, tables, safety,
+      action: async () => { actions++; throw actionError; },
+    }),
+    error => error === readerError,
+    'the second snapshot failure must override an earlier caller exception',
+  );
+  assert.equal(actions, 1, 'baseline must complete before invoking the action');
+  assert.equal(snapshots, 2, 'the post-action snapshot must be attempted');
+  assert.deepEqual(releases, [[readerError]],
+    'only the pinned reader error is passed to release(error)');
+});
+
+test('release failure after a broken post-action reader preserves the snapshot error as cause', async () => {
+  const readerError = Object.assign(new Error('pinned reader lost'), { code: '57P01' });
+  const releaseError = new Error('release failed');
+  const releases: unknown[][] = [];
+  let snapshots = 0;
+  const db = {
+    async connect() {
+      return {
+        _queryable: true,
+        async query(sql: string): Promise<Row[]> {
+          if (sql.includes('current_database()')) {
+            return [{ database_name: safety.expectedDatabase, user_name: safety.expectedUser }];
+          }
+          snapshots++;
+          if (snapshots === 1) return [{ id: 1, state: 'unchanged' }];
+          throw readerError;
+        },
+        release(...args: unknown[]) {
+          releases.push(args);
+          throw releaseError;
+        },
+      };
+    },
+  };
+  await assert.rejects(
+    assertNoMutation({ db, tables, safety, action: async () => {} }),
+    error => error === releaseError &&
+      (error as Error & { cause?: unknown }).cause === readerError,
+    'cleanup failure keeps precedence but retains the pinned-reader failure',
+  );
+  assert.equal(snapshots, 2);
+  assert.deepEqual(releases, [[readerError]]);
+  assert.equal(Object.prototype.propertyIsEnumerable.call(releaseError, 'cause'), false,
+    'the original query error must not become enumerable in diagnostics');
+});
