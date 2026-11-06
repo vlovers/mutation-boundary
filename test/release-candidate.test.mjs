@@ -13,7 +13,7 @@ const STABLE_SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 // release it can legitimately lag behind the candidate package.json version.
 // Unlike the historic v0.6.0 review, this pointer must advance after publish.
 function verifyPublishedReadme(readme, changelog, candidateVersion) {
-  const versions = [...readme.matchAll(/^> \*\*Published package: v((?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*))\*\*/gm)];
+  const versions = [...readme.matchAll(/^> \*\*Published package: v((?:0|[1-9]\d*)\\.(?:0|[1-9]\d*)\\.(?:0|[1-9]\d*))\*\*/gm)];
   assert.equal(versions.length, 1, 'README must have exactly one published-package announcement');
   const publishedVersion = versions[0][1];
   assert.ok(STABLE_SEMVER.test(publishedVersion));
@@ -68,7 +68,7 @@ test('published README pointer accepts a future release without removing v0.6.0 
     /changelog section/);
   assert.throws(() => verifyPublishedReadme(readme('0.7.0').replace('/tree/v0.7.0', '/tree/v0.6.0'),
     existing, '0.7.0'), /release tag link/);
-  assert.throws(() => verifyPublishedReadme(readme('0.7.0') + '\\n' + readme('0.6.0'),
+  assert.throws(() => verifyPublishedReadme(readme('0.7.0') + '\n' + readme('0.6.0'),
     existing, '0.7.0'), /exactly one/);
 });
 
