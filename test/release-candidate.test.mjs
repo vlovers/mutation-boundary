@@ -13,9 +13,12 @@ const STABLE_SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 // release it can legitimately lag behind the candidate package.json version.
 // Unlike the historic v0.6.0 review, this pointer must advance after publish.
 function verifyPublishedReadme(readme, changelog, candidateVersion) {
-  const versions = [...readme.matchAll(/^> \*\*Published package: v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))\*\*/gm)];
-  assert.equal(versions.length, 1, 'README must have exactly one published-package announcement');
-  const publishedVersion = versions[0][1];
+  const announcements = [...readme.matchAll(/^> \*\*Published package:.*$/gm)];
+  assert.equal(announcements.length, 1, 'README must have exactly one published-package announcement');
+  const announcement = announcements[0][0];
+  const versionMatch = /^> \*\*Published package: v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))\*\*(?:\s|$)/.exec(announcement);
+  assert.ok(versionMatch, 'README published announcement must contain stable semver');
+  const publishedVersion = versionMatch[1];
   assert.ok(STABLE_SEMVER.test(publishedVersion));
   const publishedParts = publishedVersion.split('.').map(Number);
   const candidateParts = candidateVersion.split('.').map(Number);
@@ -24,10 +27,12 @@ function verifyPublishedReadme(readme, changelog, candidateVersion) {
     part > candidateParts[i] && publishedParts.slice(0, i).every((earlier, j) => earlier === candidateParts[j])
   );
   assert.equal(publishedIsNewer, false, 'README cannot advertise a version newer than the source candidate');
-  assert.ok(readme.includes(`https://www.npmjs.com/package/mutation-boundary/v/${publishedVersion}`),
+  assert.ok(announcement.includes(`https://www.npmjs.com/package/mutation-boundary/v/${publishedVersion}`),
     'README npm package link must match advertised version');
-  assert.ok(readme.includes(`https://github.com/vlovers/mutation-boundary/tree/v${publishedVersion}`),
+  assert.ok(announcement.includes(`https://github.com/vlovers/mutation-boundary/tree/v${publishedVersion}`),
     'README release tag link must match advertised version');
+  assert.ok(readme.includes(`npm install -D mutation-boundary@^${publishedVersion}`),
+    'README installation command must match published version');
   assert.ok(changelog.includes(`## ${publishedVersion} —`),
     'published package version needs a matching changelog section');
 }
@@ -58,7 +63,7 @@ test('published README pointer accepts a future release without removing v0.6.0 
   const existing = `## 0.6.0 — historical published release
 ## 0.7.0 — newer published release
 `;
-  const readme = version => `> **Published package: v${version}** [npm](https://www.npmjs.com/package/mutation-boundary/v/${version}) [tag](https://github.com/vlovers/mutation-boundary/tree/v${version})`;
+  const readme = version => `> **Published package: v${version}** [npm](https://www.npmjs.com/package/mutation-boundary/v/${version}) [tag](https://github.com/vlovers/mutation-boundary/tree/v${version})\nnpm install -D mutation-boundary@^${version}`;
   assert.doesNotThrow(() => verifyPublishedReadme(readme('0.6.0'), existing, '0.7.0'),
     'published v0.6.0 must remain valid while v0.7.0 is a candidate');
   assert.doesNotThrow(() => verifyPublishedReadme(readme('0.7.0'), existing, '0.7.0'),
@@ -70,6 +75,16 @@ test('published README pointer accepts a future release without removing v0.6.0 
     existing, '0.7.0'), /release tag link/);
   assert.throws(() => verifyPublishedReadme(readme('0.7.0') + '\n' + readme('0.6.0'),
     existing, '0.7.0'), /exactly one/);
+  assert.throws(() => verifyPublishedReadme(readme('0.7.0').replace('@^0.7.0', '@^0.6.0'),
+    existing, '0.7.0'), /installation command/);
+  assert.throws(() => verifyPublishedReadme(readme('0.7.0').replace('** [npm]', ' [npm]'),
+    existing, '0.7.0'), /stable semver/);
+  assert.throws(() => verifyPublishedReadme(readme('0.7.0').replace('/v/0.7.0', '/v/0.6.0')
+    + '\\nhttps://www.npmjs.com/package/mutation-boundary/v/0.7.0',
+    existing, '0.7.0'), /npm package link/);
+  assert.throws(() => verifyPublishedReadme(readme('0.7.0').replace('/tree/v0.7.0', '/tree/v0.6.0')
+    + '\\nhttps://github.com/vlovers/mutation-boundary/tree/v0.7.0',
+    existing, '0.7.0'), /release tag link/);
 });
 
 test('npm publisher rejects version-tag mismatch before publishing', () => {
