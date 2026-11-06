@@ -5,10 +5,13 @@ import { assertNoMutation, MutationBoundaryError, assertDisposableDatabase } fro
 
 
 const validatedPools = new WeakSet<pg.Pool>();
-async function validateDisposablePool(pool: pg.Pool, safety: Parameters<typeof assertDisposableDatabase>[1]): Promise<void> {
+async function createDisposablePoolTable(pool: pg.Pool, safety: Parameters<typeof assertDisposableDatabase>[1], sql: string): Promise<void> {
   const client = await pool.connect();
   try {
     await assertDisposableDatabase(client, safety);
+    // Ownership is established only after CREATE succeeds. Otherwise a
+    // duplicate-table failure must never authorize DROP of the existing table.
+    await client.query(sql);
     validatedPools.add(pool);
   } finally {
     client.release();
@@ -75,8 +78,7 @@ test('real pg.Pool pins a connection and observes committed changes', async () =
   };
   const table = 'boundary_pool_probe';
   try {
-    await validateDisposablePool(pool, safety);
-    await pool.query('CREATE TABLE ' + table + ' (id integer PRIMARY KEY, value text)');
+    await createDisposablePoolTable(pool, safety, 'CREATE TABLE ' + table + ' (id integer PRIMARY KEY, value text)');
     await assert.rejects(
       assertNoMutation({
         db: pool,
@@ -176,8 +178,7 @@ test('single-connection pg.Pool completes when action does not acquire the pool'
     confirmDisposableTestDatabase: true as const,
   };
   try {
-    await validateDisposablePool(pool, safety);
-    await pool.query('CREATE TABLE boundary_single_pool_probe (id integer PRIMARY KEY)');
+    await createDisposablePoolTable(pool, safety, 'CREATE TABLE boundary_single_pool_probe (id integer PRIMARY KEY)');
     await assertNoMutation({
       db: pool, tables: [{ name: 'boundary_single_pool_probe', key: 'id' }],
       safety, action: async () => {},
@@ -199,9 +200,12 @@ test('schema-qualified tables and composite row keys detect surviving mutations'
     expectedUser: 'mutation_boundary_ci',
     confirmDisposableTestDatabase: true as const,
   };
+  let schemaCreated = false;
   try {
     await assertDisposableDatabase(db, safety);
-    await db.query('CREATE SCHEMA IF NOT EXISTS boundary_v02_test');
+    // Never adopt a pre-existing schema; cleanup uses DROP ... CASCADE.
+    await db.query('CREATE SCHEMA boundary_v02_test');
+    schemaCreated = true;
     await db.query('CREATE TABLE boundary_v02_test.memberships (tenant_id integer NOT NULL, member_id integer NOT NULL, state text NOT NULL, PRIMARY KEY (tenant_id, member_id))');
     await db.query("INSERT INTO boundary_v02_test.memberships VALUES (1, 1, 'active'), (2, 1, 'active')");
     const tables = [{ name: 'boundary_v02_test.memberships', key: ['tenant_id', 'member_id'] }];
@@ -218,8 +222,11 @@ test('schema-qualified tables and composite row keys detect surviving mutations'
       safety, action: async () => { throw new Error('should not run'); },
     }), /unsafe SQL identifier/);
   } finally {
-    await db.query('DROP SCHEMA IF EXISTS boundary_v02_test CASCADE');
-    await db.end();
+    try {
+      if (schemaCreated) await db.query('DROP SCHEMA boundary_v02_test CASCADE');
+    } finally {
+      await db.end();
+    }
   }
 });
 
@@ -289,8 +296,7 @@ test('single-connection pool fails with a bounded timeout when action also acqui
     confirmDisposableTestDatabase: true as const,
   };
   try {
-    await validateDisposablePool(pool, safety);
-    await pool.query('CREATE TABLE boundary_pool_contention_probe (id integer PRIMARY KEY)');
+    await createDisposablePoolTable(pool, safety, 'CREATE TABLE boundary_pool_contention_probe (id integer PRIMARY KEY)');
     await assert.rejects(assertNoMutation({
       db: pool,
       tables: [{ name: 'boundary_pool_contention_probe', key: 'id' }],

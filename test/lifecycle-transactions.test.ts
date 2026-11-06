@@ -17,10 +17,13 @@ const connectionString = () => {
 
 
 const validatedPools = new WeakSet<pg.Pool>();
-async function validateDisposablePool(pool: pg.Pool): Promise<void> {
+async function createDisposablePoolTable(pool: pg.Pool, sql: string): Promise<void> {
   const client = await pool.connect();
   try {
     await assertDisposableDatabase(client, safety);
+    // Mark only a table actually created by this test for cleanup; if CREATE
+    // fails on a pre-existing table, the test must not drop someone else's data.
+    await client.query(sql);
     validatedPools.add(pool);
   } finally {
     client.release();
@@ -30,8 +33,7 @@ async function validateDisposablePool(pool: pg.Pool): Promise<void> {
 test('committed writes on an independent connection are detected', async () => {
   const pool = new pg.Pool({ connectionString: connectionString(), max: 2, connectionTimeoutMillis: 1000 });
   try {
-    await validateDisposablePool(pool);
-    await pool.query('CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
+    await createDisposablePoolTable(pool, 'CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
     await assert.rejects(assertNoMutation({
       db: pool, tables, safety,
       action: async () => {
@@ -63,8 +65,7 @@ test('independent uncommitted writes are invisible until commit', async () => {
   const pool = new pg.Pool({ connectionString: connectionString(), max: 2, connectionTimeoutMillis: 1000 });
   let writer: pg.PoolClient | undefined;
   try {
-    await validateDisposablePool(pool);
-    await pool.query('CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
+    await createDisposablePoolTable(pool, 'CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
     writer = await pool.connect();
     await writer.query('BEGIN');
     await assertNoMutation({
@@ -132,8 +133,7 @@ test('action error preserves original error when the database net state is uncha
   const pool = new pg.Pool({ connectionString: connectionString(), max: 2, connectionTimeoutMillis: 1000 });
   const sentinel = new Error('caller-owned-action-error');
   try {
-    await validateDisposablePool(pool);
-    await pool.query('CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
+    await createDisposablePoolTable(pool, 'CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
     await assert.rejects(assertNoMutation({
       db: pool, tables, safety,
       action: async () => {
@@ -151,8 +151,7 @@ test('baseline validation failure must not execute action or retain a pool conne
   const pool = new pg.Pool({ connectionString: connectionString(), max: 2, connectionTimeoutMillis: 1000 });
   let executed = false;
   try {
-    await validateDisposablePool(pool);
-    await pool.query('CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
+    await createDisposablePoolTable(pool, 'CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
     await assert.rejects(assertNoMutation({
       db: pool, tables: [{ name: 'boundary_lifecycle_probe;DROP', key: 'id' }],
       safety, action: async () => { executed = true; },
@@ -168,8 +167,7 @@ test('baseline validation failure must not execute action or retain a pool conne
 test('pool exhaustion times out, releases snapshot connection, and subsequently recovers', async () => {
   const pool = new pg.Pool({ connectionString: connectionString(), max: 1, connectionTimeoutMillis: 200 });
   try {
-    await validateDisposablePool(pool);
-    await pool.query('CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
+    await createDisposablePoolTable(pool, 'CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
     await assert.rejects(assertNoMutation({
       db: pool, tables, safety,
       action: async () => { await pool.query('SELECT 1'); },
@@ -187,8 +185,7 @@ test('pool exhaustion times out, releases snapshot connection, and subsequently 
 test('committed UPDATE and DELETE survive action exceptions and report aggregate counts', async () => {
   const pool = new pg.Pool({ connectionString: connectionString(), max: 2, connectionTimeoutMillis: 1000 });
   try {
-    await validateDisposablePool(pool);
-    await pool.query('CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
+    await createDisposablePoolTable(pool, 'CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
     await pool.query("INSERT INTO boundary_lifecycle_probe VALUES (1, 'before'), (2, 'before')");
     await assert.rejects(assertNoMutation({
       db: pool, tables, safety,
@@ -215,8 +212,7 @@ test('transaction rollback after a rejected action leaves no detected net change
   const pool = new pg.Pool({ connectionString: connectionString(), max: 2, connectionTimeoutMillis: 1000 });
   const sentinel = new Error('original action failure');
   try {
-    await validateDisposablePool(pool);
-    await pool.query('CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
+    await createDisposablePoolTable(pool, 'CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
     await assert.rejects(assertNoMutation({
       db: pool, tables, safety,
       action: async () => {
@@ -243,8 +239,7 @@ test('transaction rollback after a rejected action leaves no detected net change
 test('unsupported post-action PostgreSQL row cap fails and pool remains reusable', async () => {
   const pool = new pg.Pool({ connectionString: connectionString(), max: 2, connectionTimeoutMillis: 1000 });
   try {
-    await validateDisposablePool(pool);
-    await pool.query('CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
+    await createDisposablePoolTable(pool, 'CREATE TABLE boundary_lifecycle_probe (id integer PRIMARY KEY, value text NOT NULL)');
     await assert.rejects(assertNoMutation({
       db: pool, tables, safety, maxRowsPerTable: 1,
       action: async () => {

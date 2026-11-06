@@ -6,7 +6,7 @@
 - Add PostgreSQL regression tests for pinned reader connection failures, a committed independent writer before the after-snapshot, and the **REPEATABLE READ visibility blind spot** when a caller wraps the snapshot reader in a long-lived transaction; concurrency outside an isolated fixture remains unsupported.
 - Add an optional `npm run profile:memory` command and [memory/reliability methodology](docs/MEMORY_RELIABILITY.md). Its RSS/heap measurements are observations, not a hard memory ceiling.
 - Preserve zero-argument `BoundaryPool.release()` semantics for healthy custom adapters on error paths; pass a discard reason only for an unusable pinned reader. Add explicit adapter-arity regressions.
-- Validate disposable PostgreSQL identity before fixture DDL in the existing pool/client integration suites; skip fixture cleanup DDL if identity validation fails.
+- Validate disposable PostgreSQL identity before fixture DDL; mark fixture ownership **only after successful CREATE**, never drop an existing same-name table on failed CREATE, and do not adopt pre-existing schemas for CASCADE cleanup.
 - No public API or runtime dependency changes. Not yet published.
 
 
