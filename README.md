@@ -2,6 +2,8 @@
 
 **Detect unexpected PostgreSQL writes after an operation that should leave the database unchanged.**
 
+**Engineering governance:** [Agent instructions](AGENTS.md) · [Multi-agent workflow](docs/engineering/MULTI_AGENT_WORKFLOW.md) · [Definition of Done](docs/engineering/DEFINITION_OF_DONE.md) · [Independent review](docs/engineering/REVIEW_POLICY.md) · [Release checklist](docs/engineering/RELEASE_CHECKLIST.md). These are contribution policies, not guarantees of database isolation or release authorization.
+
 [![CI](https://github.com/vlovers/mutation-boundary/actions/workflows/ci.yml/badge.svg)](https://github.com/vlovers/mutation-boundary/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![npm version](https://img.shields.io/npm/v/mutation-boundary.svg)](https://www.npmjs.com/package/mutation-boundary)
