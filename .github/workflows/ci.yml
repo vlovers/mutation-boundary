@@ -1,7 +1,12 @@
 name: MutationBoundary checks
 on:
+  # Avoid double CI for feature-branch pushes with open PRs.
   push:
+    branches: [main]
   pull_request:
+concurrency:
+  group: mutation-boundary-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 permissions:
   contents: read
 jobs:

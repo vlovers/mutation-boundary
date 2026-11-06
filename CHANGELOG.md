@@ -1,22 +1,16 @@
 # Changelog
 
-## Unreleased — PostgreSQL reliability and memory characterization
+## 0.7.0 — snapshot integrity and PostgreSQL reliability (release candidate; NOT PUBLISHED)
 
-- Add real disposable PostgreSQL tests for the 32 MiB aggregate snapshot limit both before and after the action, selected-column projection on large rows, and subsequent pool reuse.
-- Add PostgreSQL regression tests for pinned reader connection failures, a committed independent writer before the after-snapshot, and the **REPEATABLE READ visibility blind spot** when a caller wraps the snapshot reader in a long-lived transaction; concurrency outside an isolated fixture remains unsupported.
-- Add an optional `npm run profile:memory` command and [memory/reliability methodology](docs/MEMORY_RELIABILITY.md). Its RSS/heap measurements are observations, not a hard memory ceiling.
-- Preserve zero-argument `BoundaryPool.release()` semantics for healthy custom adapters on error paths; pass a discard reason only for an unusable pinned reader. Add explicit adapter-arity regressions.
-- Validate disposable PostgreSQL identity before fixture DDL; mark fixture ownership **only after successful CREATE**, never drop an existing same-name table on failed CREATE, and do not adopt pre-existing schemas for CASCADE cleanup. Add real PostgreSQL negative regressions proving a duplicate table/schema survives failed CREATE and is not adopted for cleanup.
-- No public API or runtime dependency changes. Not yet published.
+- Reject unsafe snapshot representations: accessors, symbol keys, sparse arrays, spoofed Date tags, shadowed Buffer/array methods and inherited row identifiers.
+- Observe asynchronous error events on pinned pooled readers; discard unusable connections and remove temporary listeners on cleanup. Preserve error precedence.
+- Expand real disposable PostgreSQL tests: SQLSTATE 23505/08006/57P01, writer transaction rollback, pool recovery, REPEATABLE READ visibility limits and fixture ownership safety.
+- Verify baseline/post-action 32 MiB retained-canonical-data budget on large fixtures, plus narrow projections and observational `npm run profile:memory` (not an RSS ceiling).
+- Deduplicate GitHub Actions PR/main runs and codify contributor/reviewer and reproducible evidence procedures.
+- Make release-candidate validation version-neutral while preserving historical v0.6.0 provenance.
+- No new public exports or runtime dependencies; stricter validation intentionally fails closed on unusual adapters.
 
-
-## Unreleased — next snapshot integrity update (not published)
-
-- Canonical array snapshots now inspect own data descriptors and ordered dense indices before reading values, rejecting nested index getters, symbol keys, accessors and sparse arrays disguised by unrelated enumerable fields.
-- Replace shadowable `Array.prototype.map`, Buffer `toString` and binary `byteLength` reads with validated intrinsic operations. Ignore spoofed `Symbol.toStringTag` when recognizing genuine Date objects.
-- Reuse own property descriptors during object serialization to avoid rereading adapter-controlled getters. Require own enumerable data descriptors for row keys, preventing inherited getter execution or hidden identity fields.
-- Add unit, pool cleanup and disposable PostgreSQL JSONB-array regressions. No new public exports; additional unusual adapter representations intentionally fail closed.
-
+**Publication status:** not released. Historical v0.6.0 npm installation guidance remains in README until v0.7.0 Trusted Publishing and registry verification have succeeded.
 
 ## 0.6.0 — reliability hardening (published via npm workflow 2026-10-21)
 
