@@ -1,7 +1,13 @@
 name: MutationBoundary checks
 on:
+  # Open PR branches are covered by pull_request; avoid a second full PostgreSQL
+  # and consumer suite on the same commit from the branch push event.
   push:
+    branches: [main]
   pull_request:
+concurrency:
+  group: mutation-boundary-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
