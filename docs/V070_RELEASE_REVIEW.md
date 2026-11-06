@@ -19,10 +19,14 @@ Use **only isolated disposable, quiescent PostgreSQL**; not production/shared da
 
 The candidate review found a gap between removal of the temporary pinned-reader `error` listener and normal `release()`. Runtime now keeps the observer attached through the release attempt; failed release is propagated without a second release attempt, and the observer is then detached. Two unit regressions assert ordering, single release, and listener cleanup. Confirm these on the exact updated head before accepting v0.7.0.
 
+## Release audit finding — external tarball consumer DDL safety
+
+The external tarball consumer previously created its PostgreSQL fixture before checking disposable database identity and dropped the same-name table even if CREATE failed. This violated the repository's fixture-ownership invariant and was fixed before release: identity verification and CREATE now use one pinned client, `fixtureCreated` is set only on successful CREATE, and DROP runs only for an owned fixture. The smoke-test writer also attempts rollback and discards a client after failed rollback. Confirm the external PostgreSQL consumer step passes on the exact final SHA.
+
 ## Mandatory release gates
 
 - [ ] Authorized independent review of combined runtime, regression tests, CI and publishing changes, including new pinned-reader EventEmitter observation.
-- [ ] Full Node 24 CI on candidate exact SHA with disposable PostgreSQL, NestJS/TypeORM, Jest/Vitest, memory profile and error-path regressions.
+- [ ] Full Node 24 CI on final candidate exact SHA with disposable PostgreSQL, NestJS/TypeORM, Jest/Vitest, memory profile and error-path regressions. Previous integrated SHA `7b6bc9a0acc827ac5a90975feba734e137c9235e` passed all 28 workflow steps ([CI 42312133198](https://github.com/vlovers/mutation-boundary/actions/runs/42312133198)), but does not certify later corrections.
 - [ ] Inspect `npm pack --json --dry-run --ignore-scripts` allowlist, compiled exports/types, lockfile reproducibility and external ESM/TS/PostgreSQL consumer.
 - [ ] Independently verify live npm registry: v0.7.0 must be unpublished; do not assume npm freshness based on source README.
 - [ ] Confirm package and root lockfile at 0.7.0, changelog, README's last *published* 0.6.0 pointer, and trusted publish workflow/preflight consistency.

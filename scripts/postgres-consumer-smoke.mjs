@@ -21,7 +21,7 @@ try {
   writeFileSync(join(temp, 'verify.mjs'), `
 import assert from 'node:assert/strict';
 import pg from 'pg';
-import { assertNoMutation, MutationBoundaryError } from 'mutation-boundary';
+import { assertNoMutation, MutationBoundaryError, assertDisposableDatabase } from 'mutation-boundary';
 
 const url = process.env.MUTATION_BOUNDARY_TEST_DATABASE_URL;
 const safety = {
@@ -32,8 +32,18 @@ const safety = {
 const table = 'boundary_external_consumer_probe';
 const selection = [{ name: table, key: 'id' }];
 const pool = new pg.Pool({ connectionString: url, max: 2, connectionTimeoutMillis: 1000 });
+let fixtureCreated = false;
 try {
-  await pool.query('CREATE TABLE ' + table + ' (id integer PRIMARY KEY, state text NOT NULL)');
+  // Safety identity and DDL must execute on the same pinned connection.
+  // Never adopt a pre-existing table on a failed CREATE.
+  const fixtureClient = await pool.connect();
+  try {
+    await assertDisposableDatabase(fixtureClient, safety);
+    await fixtureClient.query('CREATE TABLE ' + table + ' (id integer PRIMARY KEY, state text NOT NULL)');
+    fixtureCreated = true;
+  } finally {
+    fixtureClient.release();
+  }
   const failure = new Error('simulated failed operation');
   await assert.rejects(assertNoMutation({
     db: pool, tables: selection, safety,
@@ -54,20 +64,35 @@ try {
     db: pool, tables: selection, safety,
     action: async () => {
       const writer = await pool.connect();
+      let transactionStarted = false;
+      let discardWriter;
       try {
         await writer.query('BEGIN');
+        transactionStarted = true;
         await writer.query("UPDATE " + table + " SET state = 'rolled-back' WHERE id = 1");
         await writer.query('ROLLBACK');
+        transactionStarted = false;
       } finally {
-        writer.release();
+        if (transactionStarted) {
+          try { await writer.query('ROLLBACK'); }
+          catch (error) {
+            discardWriter = error instanceof Error ? error : new Error('Writer rollback failed');
+          }
+        }
+        // Never recycle a client after failed rollback.
+        if (discardWriter) writer.release(discardWriter);
+        else writer.release();
       }
     },
   });
   assert.equal(pool.idleCount, pool.totalCount);
   console.log('External npm tarball + real disposable PostgreSQL consumer passed');
 } finally {
-  try { await pool.query('DROP TABLE IF EXISTS ' + table); }
-  finally { await pool.end(); }
+  try {
+    if (fixtureCreated) await pool.query('DROP TABLE IF EXISTS ' + table);
+  } finally {
+    await pool.end();
+  }
 }
 `);
   execFileSync('node', [join(temp, 'verify.mjs')], {
